@@ -10,6 +10,6 @@ channels:
   - https://prefix.dev/conda-forge
   - https://prefix.dev/bioconda
 dependencies:
-  - python >=3.9,<3.13
-  - usher >=0.6,<1.0    # provides matUtils
-  - pyyaml >=6.0,<7.0
+  - python
+  - usher    # provides matUtils
+  - pyyaml

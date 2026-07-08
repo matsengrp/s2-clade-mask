@@ -168,20 +168,32 @@ def parse_branch_spec(path):
 # ---------------------------------------------------------------------------
 
 
+# matUtils extract writes its output relative to its ``-d`` directory (default
+# the CWD), prepending that directory even to an *absolute* ``--sample-paths`` /
+# ``--clade-paths`` path -- so a bare absolute path lands in a bogus nested
+# location (``$CWD/fh/.../out.tsv``) and the intended file is never written.
+# Passing ``-d /`` together with an absolute out path makes the prepend collapse
+# (``/`` + ``/abs`` -> ``//abs`` == ``/abs``), so the file lands exactly where we
+# asked. Both extract wrappers must do this; forgetting it on one silently yields
+# an empty output file.
+
+
 def run_sample_paths(tree, out_path, matutils="matUtils", log_file=None):
     """Run ``matUtils extract --sample-paths`` on ``tree`` writing ``out_path``."""
-    cmd = [matutils, "extract", "-i", str(tree), "-d", "/", "--sample-paths", str(out_path)]
+    out_abs = os.path.abspath(out_path)
+    cmd = [matutils, "extract", "-i", str(tree), "-d", "/", "--sample-paths", out_abs]
     log(f"Running: {' '.join(cmd)}", log_file)
     subprocess.run(cmd, check=True)
-    return out_path
+    return out_abs
 
 
 def run_clade_paths(tree, out_path, matutils="matUtils", log_file=None):
     """Run ``matUtils extract --clade-paths`` on ``tree`` writing ``out_path``."""
-    cmd = [matutils, "extract", "-i", str(tree), "--clade-paths", str(out_path)]
+    out_abs = os.path.abspath(out_path)
+    cmd = [matutils, "extract", "-i", str(tree), "-d", "/", "--clade-paths", out_abs]
     log(f"Running: {' '.join(cmd)}", log_file)
     subprocess.run(cmd, check=True)
-    return out_path
+    return out_abs
 
 
 def parse_clade_paths(path):
@@ -267,7 +279,10 @@ def resolve_representative_nodes(clade_search, sample_paths_file, log_file=None)
             name = full_name.split("|")[0]
             if name not in remaining:
                 continue
-            nodes = path.split(" ")
+            # Drop empty tokens: matUtils (usher >=0.6.6) emits a trailing space
+            # after the last node, so a bare split yields a trailing '' that would
+            # otherwise be picked up as the (empty) representative node.
+            nodes = [tok for tok in path.split(" ") if tok]
             for clade, backtrack in wanted[name]:
                 idx = -1
                 if nodes[idx].startswith(name):
