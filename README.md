@@ -19,9 +19,15 @@ s2-clade-mask/
 ├── README.md
 ├── CLAUDE.md                       # guidance for Claude Code / contributors
 ├── config.yaml                     # all run parameters (paths, options)
-├── environment.yml                 # conda env (usher/matUtils, python, pyyaml)
+├── environment.yml                 # conda env (usher/matUtils, snakemake, python, pyyaml, gh)
+├── Snakefile                       # staged pipeline (primary run path)
 ├── scripts/
-│   └── generate_usher_masked_sites.py   # the generator
+│   ├── s2clademask.py                   # shared library (all generation logic)
+│   ├── extract_paths.py                 # rule: one matUtils extract pass
+│   ├── resolve_nodes.py                 # rule: resolve clades in one anchoring mode
+│   ├── compare_and_build.py             # rule: compare both modes + emit final YAML
+│   ├── check_recovery.py                # rule: superset recovery vs old scheme
+│   └── generate_usher_masked_sites.py   # one-shot wrapper (same logic, single process)
 ├── data/
 │   ├── branchSpecificMask.yml           # vendored UCSC input spec (pinned commit)
 │   └── usher_masked_sites_old_scheme.yml # vendored jbloomlab old-scheme baseline (pinned commit)
@@ -56,21 +62,59 @@ already knows how to consume.
 conda env create -f environment.yml
 conda activate s2-clade-mask
 # sanity check
-python scripts/generate_usher_masked_sites.py --help
+snakemake -n                                          # dry-run the pipeline DAG
+python scripts/generate_usher_masked_sites.py --help  # or the one-shot wrapper
 ```
 
-`usher` supplies the `matUtils` binary; the generator itself only needs the
-Python standard library plus `pyyaml`.
+`usher` supplies the `matUtils` binary and `snakemake` runs the staged pipeline;
+the generation code itself only needs the Python standard library plus `pyyaml`.
 
 ## Usage
 
 All run parameters live in `config.yaml`. Edit it to point at your input tree /
-metadata, then run the generator **from the repo root** (so relative paths
-resolve):
+metadata, then run **from the repo root** (so the relative paths resolve).
+
+### Pipeline (primary path)
+
+The generation is decomposed into cached [Snakemake](https://snakemake.readthedocs.io)
+rules, so each expensive stage re-runs only when its inputs change — the two
+`matUtils extract` passes especially (the `--sample-paths` pass is ~1 h and
+produces a ~19 GB file). Run:
+
+```bash
+snakemake --cores 4
+```
+
+Rule DAG (`results/…` outputs in parentheses):
+
+1. `extract_sample_paths` (`sample_paths.tsv`) and `extract_clade_paths`
+   (`clade_paths.tsv`) — the two `matUtils extract` passes.
+2. `resolve_representative` (`nodes_representative.yaml`) — **Mode 1**, each PANGO
+   clade anchored at its representative sample's node (exact string match).
+3. `resolve_founder` (`nodes_founder.yaml`) — **Mode 2**, each clade anchored at
+   its annotated founder (MRCA) node.
+4. `compare_and_build` (`usher_masked_sites.yaml` + `anchoring_comparison.txt`) —
+   diffs the two anchorings into a **report** (report-only; representative-primary
+   stays authoritative) and builds the final output as Mode 1 with a per-clade
+   Mode-2 fallback only where the config approves it (see §3).
+5. `check_recovery` (`recovery_report.txt`) — the old-scheme superset check;
+   under `strict: true` a true shortfall fails the run.
+
+To skip the ~1 h matUtils passes during development, point `sample_paths` /
+`clade_paths` in `config.yaml` at precomputed TSVs — those files then satisfy the
+inputs and the extract rules never fire.
+
+### One-shot wrapper
+
+For a quick local run, the same library logic runs in a single process:
 
 ```bash
 python scripts/generate_usher_masked_sites.py --config config.yaml
 ```
+
+It produces an identical `usher_masked_sites.yaml` (both paths call the same
+`scripts/s2clademask.py` functions); it just doesn't cache the intermediates or
+write the comparison report.
 
 Use the **full gisaid-and-public** MAT — not the public-only tree (it is missing
 several GISAID-only representatives) and not a filtered per-run tree (all clades
@@ -94,6 +138,8 @@ representatives match against.
 | `union_old` | force-include any unrecovered old masks |
 | `matutils`, `workdir` | binary name and scratch dir for the large paths files |
 | `sample_paths`, `clade_paths` | precomputed matUtils outputs (skip the extract passes) |
+| `nodes_representative`, `nodes_founder` | Mode 1 / Mode 2 node-map intermediates (pipeline; gitignored) |
+| `comparison_report`, `recovery_report` | pipeline diagnostic reports (gitignored) |
 | `log` | optional run-log file |
 | `representative_name_overrides` | spec rep name → exact tree name, for reviewed renames (see §3) |
 | `representative_fallbacks` | clade → approved fallback when its rep is absent (see §3) |
@@ -222,6 +268,23 @@ discards those positions via its range filter at runtime, so masking them was
 redundant; omitting them keeps the file focused on the masks that actually affect
 results. The old-scheme recovery check (below) treats old UTR masks as
 intentionally dropped rather than as failures.
+
+## Representative vs. founder anchoring (comparison report)
+
+The pipeline resolves each PANGO clade **both** ways and records the difference:
+
+- **Mode 1 (string match)** — the representative sample's node (§3), the
+  authoritative anchoring.
+- **Mode 2 (founder)** — the annotated founder (MRCA) node.
+
+`compare_and_build` builds the full Nextstrain-clade mask map under each anchoring
+and writes `results/anchoring_comparison.txt`: which clades resolve to a different
+node, and which emitted Nextstrain-clade masks differ. This is **report-only** —
+it never fails the run. Per design invariant #1 the final output stays
+representative-primary; the founder anchoring is used only as an approved
+per-clade fallback (§3), and the report is there so a human can see the
+consequence of that choice. (This replaces the earlier ad-hoc
+`compare_anchoring.py` diagnostic.)
 
 ## Output schema
 

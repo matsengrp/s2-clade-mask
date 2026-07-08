@@ -53,9 +53,19 @@ union_old: false   # force-include any unrecovered old masks instead of failing
 matutils: matUtils   # binary name / path (from the `usher` conda package)
 workdir: results     # dir for the large temporary matUtils paths files
 
-# Precomputed matUtils outputs (optional; skip the matUtils extract passes):
+# Precomputed matUtils outputs (optional; skip the matUtils extract passes).
+# Under Snakemake, pointing these at existing files satisfies the extract rules'
+# inputs so they never fire -- the fast dev path (reuse the ~19 GB sample_paths):
 # sample_paths: results/sample_paths.tsv
 # clade_paths: results/clade_paths.tsv
+
+# Staged-pipeline intermediates / diagnostic reports (optional; these are the
+# defaults -- the Snakemake rules write them and compare_and_build/check_recovery
+# read them). All are gitignored and regenerated each run.
+# nodes_representative: results/nodes_representative.yaml   # Mode 1 node map
+# nodes_founder: results/nodes_founder.yaml                 # Mode 2 node map
+# comparison_report: results/anchoring_comparison.txt       # rep-vs-founder diff
+# recovery_report: results/recovery_report.txt              # old-scheme recovery
 
 # log: results/generate.log   # optional run log file
 

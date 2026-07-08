@@ -24,12 +24,23 @@ the repo without re-deriving that.
 
 ```
 config.yaml                            # all run parameters (paths + options)
-environment.yml                        # conda env: usher (matUtils), python, pyyaml
-scripts/generate_usher_masked_sites.py # the generator
+environment.yml                        # conda env: usher (matUtils), snakemake, python, pyyaml, gh
+Snakefile                              # staged pipeline (primary run path)
+scripts/s2clademask.py                 # shared library: ALL generation logic lives here
+scripts/extract_paths.py               # rule: one matUtils extract pass (--sample-paths/--clade-paths)
+scripts/resolve_nodes.py               # rule: resolve clades in one anchoring mode
+scripts/compare_and_build.py           # rule: compare both modes (report) + emit final YAML
+scripts/check_recovery.py              # rule: old-scheme superset recovery check
+scripts/generate_usher_masked_sites.py # one-shot wrapper (same lib, single process)
 data/branchSpecificMask.yml            # vendored UCSC input spec (pinned commit)
 data/usher_masked_sites_old_scheme.yml # vendored jbloomlab old-scheme baseline (pinned commit)
 results/usher_masked_sites.yaml        # generated output (tracked)
 ```
+
+The generation logic lives in **one place** — `scripts/s2clademask.py`. Both the
+Snakemake rule scripts and the one-shot wrapper import it; **never** duplicate
+logic into a rule script. The pipeline and the wrapper must produce an identical
+`results/usher_masked_sites.yaml` because they call the same functions.
 
 ## Running
 
@@ -37,13 +48,22 @@ results/usher_masked_sites.yaml        # generated output (tracked)
 conda env create -f environment.yml
 conda activate s2-clade-mask
 # from the repo root, so relative paths in config.yaml resolve:
+snakemake --cores 4                                        # primary path (staged, cached)
+# or the equivalent one-shot process:
 python scripts/generate_usher_masked_sites.py --config config.yaml
 ```
 
-All run parameters come from `config.yaml` (a single `--config` flag is the only
-CLI argument). Run against the **full gisaid-and-public** MAT — never the
-public-only tree (missing several GISAID-only representatives) or a filtered
-per-run tree.
+The Snakemake pipeline is the primary path: `extract_sample_paths` /
+`extract_clade_paths` (the two matUtils passes) → `resolve_representative` (Mode 1,
+string match) + `resolve_founder` (Mode 2, MRCA) → `compare_and_build` (writes the
+report-only `anchoring_comparison.txt` and the final YAML) → `check_recovery`.
+Each stage is cached, so troubleshooting doesn't re-pay for the ~1 h / ~19 GB
+`--sample-paths` extract. During development, set `sample_paths` / `clade_paths`
+in `config.yaml` to precomputed TSVs so the extract rules are skipped.
+
+All run parameters come from `config.yaml`. Both the pipeline and the wrapper run
+against the **full gisaid-and-public** MAT — never the public-only tree (missing
+several GISAID-only representatives) or a filtered per-run tree.
 
 ## Design invariants — do not break these
 
@@ -71,16 +91,23 @@ per-run tree.
 
 ## Editing conventions
 
-- **All run inputs** — tree/metadata paths, output, ranges, strict, *and* the
-  reviewed masking decisions (`representative_name_overrides` /
-  `representative_fallbacks`) → `config.yaml`. Keep the schema in `CONFIG_DEFAULTS`
-  / `REQUIRED_CONFIG` and the `validate_resolution_overrides` checks in sync with
-  `config.yaml` and the README key table.
+- **All generation logic → `scripts/s2clademask.py`.** The rule scripts
+  (`extract_paths.py`, `resolve_nodes.py`, `compare_and_build.py`,
+  `check_recovery.py`) and the one-shot `generate_usher_masked_sites.py` are thin
+  entrypoints that import the library; do not reimplement logic in them. Adding a
+  Snakemake rule means adding a thin script + a rule, not a second copy of an
+  algorithm.
+- **All run inputs** — tree/metadata paths, output, ranges, strict, the pipeline
+  intermediate/report paths, *and* the reviewed masking decisions
+  (`representative_name_overrides` / `representative_fallbacks`) → `config.yaml`.
+  Keep the schema in `CONFIG_DEFAULTS` / `REQUIRED_CONFIG` (in `s2clademask.py`)
+  and the `validate_resolution_overrides` checks in sync with `config.yaml` and
+  the README key table.
 - **Never hand-edit** `results/usher_masked_sites.yaml` (regenerate it),
   `data/branchSpecificMask.yml`, or `data/usher_masked_sites_old_scheme.yml`
   (re-vendor them — see below).
 - Keep `README.md` and this file **in sync** with any change to layout, the config
-  schema, the resolution logic, or the run procedure.
+  schema, the resolution logic, the pipeline/rule structure, or the run procedure.
 
 ## Updating the vendored spec
 
