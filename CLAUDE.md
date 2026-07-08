@@ -53,10 +53,12 @@ per-run tree.
    equality on the field **before the first `|`**. Never add fuzzy/substring
    matching. An unresolved representative with no approved entry must remain a
    **hard error**, never a silent guess.
-3. **Human sign-off lives in code, not config.** The `REPRESENTATIVE_NAME_OVERRIDES`
-   (renamed samples) and `REPRESENTATIVE_FALLBACKS` (absent samples) tables at the
-   top of the generator are deliberately in-code so every deviation is reviewed.
-   Add entries there — with a comment naming the clade and why — not to `config.yaml`.
+3. **Every deviation is human-approved.** The `representative_name_overrides`
+   (renamed samples) and `representative_fallbacks` (absent samples) tables live in
+   `config.yaml` and are validated at load time. The config is version-controlled,
+   so entries are reviewed exactly like code. Add an entry — with a comment naming
+   the clade and why — only after confirming the sample by hand; never add fuzzy
+   matching to avoid one.
 4. **Superset recovery.** The output must remain a superset of the old hand-made
    scheme within `site_include_range` (checked via `old_yaml` + `strict`). A true
    shortfall is a bug to investigate, not to accept.
@@ -65,10 +67,11 @@ per-run tree.
 
 ## Editing conventions
 
-- **Run parameters** (tree/metadata paths, output, ranges, strict, etc.) →
-  `config.yaml`. Keep the schema in `CONFIG_DEFAULTS` / `REQUIRED_CONFIG` in the
-  generator in sync with `config.yaml` and the README key table.
-- **Reviewed masking decisions** (overrides/fallbacks) → the in-code tables.
+- **All run inputs** — tree/metadata paths, output, ranges, strict, *and* the
+  reviewed masking decisions (`representative_name_overrides` /
+  `representative_fallbacks`) → `config.yaml`. Keep the schema in `CONFIG_DEFAULTS`
+  / `REQUIRED_CONFIG` and the `validate_resolution_overrides` checks in sync with
+  `config.yaml` and the README key table.
 - **Never hand-edit** `results/usher_masked_sites.yaml` (regenerate it) or
   `data/branchSpecificMask.yml` (re-vendor it — see below).
 - Keep `README.md` and this file **in sync** with any change to layout, the config
@@ -81,8 +84,8 @@ Re-download `branchSpecificMask.yml` from the UCSC kent repo
 update the provenance block at the top of `data/branchSpecificMask.yml`, then
 regenerate. If a representative was renamed or dropped upstream, the run fails
 loudly — confirm the sample by hand in the tree and add an approved
-`REPRESENTATIVE_NAME_OVERRIDES` (renamed) or `REPRESENTATIVE_FALLBACKS` (absent)
-entry. After regenerating, re-measure the count tables in the README.
+`representative_name_overrides` (renamed) or `representative_fallbacks` (absent)
+entry to `config.yaml`. After regenerating, re-measure the count tables in the README.
 
 ## Sanity checks
 

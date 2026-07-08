@@ -94,10 +94,12 @@ representatives match against.
 | `matutils`, `workdir` | binary name and scratch dir for the large paths files |
 | `sample_paths`, `clade_paths` | precomputed matUtils outputs (skip the extract passes) |
 | `log` | optional run-log file |
+| `representative_name_overrides` | spec rep name → exact tree name, for reviewed renames (see §3) |
+| `representative_fallbacks` | clade → approved fallback when its rep is absent (see §3) |
 
-The human-approved `REPRESENTATIVE_NAME_OVERRIDES` / `REPRESENTATIVE_FALLBACKS`
-tables are **not** in the config — they are reviewed code decisions in
-`scripts/generate_usher_masked_sites.py` (see §3).
+The `config.yaml` also carries the human-approved `representative_name_overrides`
+/ `representative_fallbacks` tables (see §3). Because the config is
+version-controlled, those entries are reviewed exactly like code.
 
 `matUtils extract --sample-paths` on an ~8M-sample tree produces a large paths
 file (tens of GB); the generator reads it only until every anchor node's ancestor
@@ -155,16 +157,16 @@ every deviation:
 1. **Representative sample (primary).** Match `representative` **exactly** against
    the tree sample name *before the first `|`*. Never a fuzzy or substring match:
    e.g. `Foo/xGBRC714bx/2021` must not resolve `IND/GBRC714b/2021`.
-2. **Approved name override** (`REPRESENTATIVE_NAME_OVERRIDES`). When the spec
-   name does not match the tree verbatim, a maintainer records the confirmed tree
-   name. Currently two entries, both pure country-abbreviation differences
+2. **Approved name override** (config `representative_name_overrides`). When the
+   spec name does not match the tree verbatim, a maintainer records the confirmed
+   tree name. Currently two entries, both pure country-abbreviation differences
    verified against the 2026-04-22 tree: `IND/GBRC714b/2021` →
    `India/GJ-GBRC714b/2021` (clade `B.1.617.2`) and `BGD/icddrb_TND_06_1053/2022`
    → `Bangladesh/icddrb_TND_06_1053/2022` (clade `XBB`).
-3. **Approved fallback** (`REPRESENTATIVE_FALLBACKS`). When a representative is
-   genuinely absent, a maintainer approves an alternative per clade —
-   `{"via": "founder"}` (the annotated MRCA node) or `{"via": "sample", ...}` (an
-   approved alternate sample). Currently one entry: `P.1`, whose representative
+3. **Approved fallback** (config `representative_fallbacks`). When a representative
+   is genuinely absent, a maintainer approves an alternative per clade —
+   `via: founder` (the annotated MRCA node) or `via: sample` (an approved alternate
+   sample). Currently one entry: `P.1`, whose representative
    `FRA/IHUCOVID-005193-N1/2021` is not in the 2026-04-22 tree, falls back to its
    `20J (Gamma)` founder. (P.1's only mask is the deletion `[11288, 11296]`, also
    masked via `B.1.1.7` and `B.1.351`, so nothing is lost.)
@@ -173,8 +175,8 @@ every deviation:
    the maintainer to add an entry — so a future spec revision that renames or drops
    a representative can never be silently mis-resolved.
 
-Both `REPRESENTATIVE_NAME_OVERRIDES` and `REPRESENTATIVE_FALLBACKS` are hard-coded
-tables near the top of `generate_usher_masked_sites.py`; revisit them whenever the
+Both tables live in `config.yaml` (`representative_name_overrides` /
+`representative_fallbacks`), validated at load time; revisit them whenever the
 spec or the tree is refreshed.
 
 ### 4. Enumerate Nextstrain clades (`load_nextstrain_clade_values`)
@@ -275,8 +277,8 @@ update the provenance block at the top of `data/branchSpecificMask.yml`
 (current: commit `2c7413b`, 2026-03-13), then regenerate as above. If the run
 fails with an unresolved-representative error, a representative was renamed or
 dropped: confirm the sample by hand in the tree and add an approved entry to
-`REPRESENTATIVE_NAME_OVERRIDES` (renamed) or `REPRESENTATIVE_FALLBACKS` (absent) —
-the script never guesses.
+`representative_name_overrides` (renamed) or `representative_fallbacks` (absent)
+in `config.yaml` — the script never guesses.
 
 ## Caveats / accepted approximations
 

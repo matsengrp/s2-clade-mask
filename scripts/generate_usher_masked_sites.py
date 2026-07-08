@@ -27,8 +27,8 @@ Approach (tree topology + over-mask)
   resolved from ``matUtils extract --sample-paths`` by an *exact* match on the
   sample name before ``|`` (respecting ``representativeBacktrack``), never a fuzzy
   or substring match. When a representative does not match the tree verbatim, or
-  is absent from it, resolution requires a deliberate, hard-coded, human-reviewed
-  entry (``REPRESENTATIVE_NAME_OVERRIDES`` / ``REPRESENTATIVE_FALLBACKS``); an
+  is absent from it, resolution requires a deliberate, human-reviewed config entry
+  (``representative_name_overrides`` / ``representative_fallbacks``); an
   unlisted, unresolved representative is a hard error. Run against a tree that
   contains the representatives -- the full **gisaid-and-public** MAT, since several
   representatives are GISAID-only and absent from the public-only tree.
@@ -203,38 +203,41 @@ def parse_clade_paths(path):
 
 
 # ---------------------------------------------------------------------------
-# Human-approved resolution overrides
+# Human-approved resolution overrides (supplied via config)
 #
 # Representative samples are resolved to tree nodes by an EXACT comparison of the
 # spec name against the tree sample name before the first ``|``. No fuzzy or
 # substring matching is ever performed. When a spec representative does not match
 # the tree verbatim, or is absent from the tree entirely, resolution requires a
-# deliberate, hard-coded entry below -- so a maintainer signs off on every single
-# deviation (a renamed sample or a substituted node). A spec representative that
-# is neither found nor listed here is a hard error, not a silent guess.
+# deliberate, human-reviewed entry in the config -- ``representative_name_overrides``
+# (a renamed sample) or ``representative_fallbacks`` (a substituted node) -- so a
+# maintainer signs off on every single deviation. The config is under version
+# control, so these entries are reviewed exactly like code. A spec representative
+# that is neither found nor listed is a hard error, not a silent guess.
 # ---------------------------------------------------------------------------
 
-# Spec representative name -> exact tree sample name (the field before ``|``).
-# Add an entry only after confirming by hand that the two names denote the same
-# sample. Verified against the 2026-04-22 gisaid-and-public MAT, where these
-# differ from the spec only by country abbreviation.
-REPRESENTATIVE_NAME_OVERRIDES = {
-    "IND/GBRC714b/2021": "India/GJ-GBRC714b/2021",                        # clade B.1.617.2
-    "BGD/icddrb_TND_06_1053/2022": "Bangladesh/icddrb_TND_06_1053/2022",  # clade XBB
-}
 
-# PANGO clade -> approved fallback used only when the clade's representative
-# sample is absent from the tree. ``{"via": "founder"}`` uses the clade's
-# annotated founder (MRCA) node; ``{"via": "sample", "name": ..., "backtrack": n}``
-# resolves an approved alternate sample. Each entry is an explicit human decision
-# to resolve that specific clade some other way.
-REPRESENTATIVE_FALLBACKS = {
-    # FRA/IHUCOVID-005193-N1/2021 is not present in the 2026-04-22
-    # gisaid-and-public MAT. P.1's only mask is the deletion [11288, 11296], which
-    # is also masked via B.1.1.7 and B.1.351; the annotated 20J (Gamma) founder
-    # anchors it faithfully.
-    "P.1": {"via": "founder"},
-}
+def validate_resolution_overrides(name_overrides, fallbacks):
+    """Sanity-check the config-supplied override/fallback tables (fail loudly)."""
+    if not isinstance(name_overrides, dict):
+        raise ValueError("config 'representative_name_overrides' must be a mapping")
+    for k, v in name_overrides.items():
+        if not isinstance(v, str):
+            raise ValueError(
+                f"representative_name_overrides['{k}'] must be a string tree name")
+    if not isinstance(fallbacks, dict):
+        raise ValueError("config 'representative_fallbacks' must be a mapping")
+    for clade, fb in fallbacks.items():
+        if not isinstance(fb, dict) or "via" not in fb:
+            raise ValueError(
+                f"representative_fallbacks['{clade}'] must be a mapping with a 'via' key")
+        if fb["via"] not in ("founder", "sample"):
+            raise ValueError(
+                f"representative_fallbacks['{clade}'].via must be 'founder' or "
+                f"'sample' (got {fb['via']!r})")
+        if fb["via"] == "sample" and not fb.get("name"):
+            raise ValueError(
+                f"representative_fallbacks['{clade}'] with via=sample needs a 'name'")
 
 
 def resolve_representative_nodes(clade_search, sample_paths_file, log_file=None):
@@ -283,11 +286,14 @@ def resolve_representative_nodes(clade_search, sample_paths_file, log_file=None)
     return clade_to_node
 
 
-def resolve_clade_nodes(spec, clade_founders, sample_paths_file, log_file=None):
+def resolve_clade_nodes(spec, clade_founders, sample_paths_file,
+                        name_overrides, fallbacks, log_file=None):
     """Map each PANGO clade to a tree node ID via its representative sample.
 
+    ``name_overrides`` and ``fallbacks`` are the human-reviewed tables from the
+    config (``representative_name_overrides`` / ``representative_fallbacks``).
     Resolution is deliberately explicit and auditable; nothing is matched fuzzily
-    and no substitution happens without a hard-coded, human-reviewed entry:
+    and no substitution happens without a config entry:
 
     1. **Representative sample (primary).** Resolve ``spec[clade]["representative"]``
        from the sample-paths file, matching the name *exactly* before the first
@@ -296,9 +302,9 @@ def resolve_clade_nodes(spec, clade_founders, sample_paths_file, log_file=None):
        ``matUtils mask`` would.
     2. **Approved name override.** If the spec name does not match the tree
        verbatim but a human has recorded the correct tree name in
-       ``REPRESENTATIVE_NAME_OVERRIDES``, resolve using that name.
+       ``representative_name_overrides``, resolve using that name.
     3. **Approved fallback.** If the representative is genuinely absent from the
-       tree and a human has approved an alternative in ``REPRESENTATIVE_FALLBACKS``,
+       tree and a human has approved an alternative in ``representative_fallbacks``,
        apply it (the clade's annotated founder node, or an approved alternate
        sample).
     4. Otherwise **fail loudly** -- a maintainer must add an override or fallback.
@@ -312,7 +318,7 @@ def resolve_clade_nodes(spec, clade_founders, sample_paths_file, log_file=None):
     overridden = {}
     for clade, entry in spec.items():
         rep = entry["representative"]
-        name = REPRESENTATIVE_NAME_OVERRIDES.get(rep, rep)
+        name = name_overrides.get(rep, rep)
         if name != rep:
             overridden[clade] = (rep, name)
         search[clade] = {"name": name, "backtrack": entry["backtrack"]}
@@ -329,7 +335,7 @@ def resolve_clade_nodes(spec, clade_founders, sample_paths_file, log_file=None):
     # Representatives that were not found require an approved fallback.
     still_missing = []
     for clade in (c for c in spec if c not in clade_to_node):
-        fb = REPRESENTATIVE_FALLBACKS.get(clade)
+        fb = fallbacks.get(clade)
         if fb is None:
             still_missing.append(clade)
             continue
@@ -358,7 +364,7 @@ def resolve_clade_nodes(spec, clade_founders, sample_paths_file, log_file=None):
         else:
             raise ValueError(
                 f"Unknown fallback kind {kind!r} for clade {clade} in "
-                "REPRESENTATIVE_FALLBACKS."
+                "config representative_fallbacks."
             )
 
     if still_missing:
@@ -369,10 +375,10 @@ def resolve_clade_nodes(spec, clade_founders, sample_paths_file, log_file=None):
         raise ValueError(
             "Could not resolve a tree node for the following clade(s): their "
             "representative sample is absent from the tree and no approved "
-            "override/fallback exists. Add an entry to REPRESENTATIVE_NAME_OVERRIDES "
-            "(if the sample is present under a different name) or "
-            "REPRESENTATIVE_FALLBACKS (to approve the founder node or an alternate "
-            f"sample):\n{detail}"
+            "override/fallback exists. Add an entry to the config's "
+            "representative_name_overrides (if the sample is present under a "
+            "different name) or representative_fallbacks (to approve the founder "
+            f"node or an alternate sample):\n{detail}"
         )
 
     for clade in sorted(overridden):
@@ -724,8 +730,9 @@ def write_output(out_path, clade_masks, spec, provenance, dropped_exclusions):
 #
 # All run parameters come from a YAML config file (default: config.yaml). Paths
 # are resolved relative to the working directory the command is run from (the
-# repo root). The human-approved REPRESENTATIVE_NAME_OVERRIDES / _FALLBACKS
-# tables are deliberately NOT config -- they are reviewed code decisions.
+# repo root). This includes the human-approved representative_name_overrides /
+# representative_fallbacks tables -- the config is version-controlled, so those
+# entries are reviewed exactly like code.
 # ---------------------------------------------------------------------------
 
 # key -> default (keys with no default are required)
@@ -742,6 +749,9 @@ CONFIG_DEFAULTS = {
     "union_old": False,          # force-include any unrecovered old masks
     "strict": False,             # exit nonzero if old masks are not fully recovered
     "log": None,
+    # Human-approved resolution deviations (see validate_resolution_overrides):
+    "representative_name_overrides": {},  # spec rep name -> exact tree name
+    "representative_fallbacks": {},       # clade -> {via: founder|sample, ...}
 }
 REQUIRED_CONFIG = ("branch_spec", "metadata", "output")
 
@@ -778,6 +788,8 @@ def main(argv=None):
     args = argparse.Namespace(**load_config(cli.config))
     log_file = args.log
     log(f"Loaded config: {cli.config}", log_file)
+    validate_resolution_overrides(args.representative_name_overrides,
+                                  args.representative_fallbacks)
 
     # Ensure the scratch dir (for the large paths files) and output dir exist.
     if args.workdir:
@@ -821,7 +833,8 @@ def main(argv=None):
         log("Resolving PANGO clade nodes (representative sample primary; "
             "approved overrides/fallbacks only)...", log_file)
         clade_to_node = resolve_clade_nodes(spec, clade_founders, sample_paths,
-                                            log_file)
+                                            args.representative_name_overrides,
+                                            args.representative_fallbacks, log_file)
 
         log(f"Loading Nextstrain clades from {args.metadata}...", log_file)
         ns_full_values = load_nextstrain_clade_values(args.metadata,

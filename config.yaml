@@ -6,9 +6,9 @@
 #
 #   python scripts/generate_usher_masked_sites.py --config config.yaml
 #
-# NOTE: the human-approved representative name-overrides and fallbacks are NOT
-# configured here -- they are reviewed code decisions in the generator itself
-# (REPRESENTATIVE_NAME_OVERRIDES / REPRESENTATIVE_FALLBACKS).
+# The human-approved representative name-overrides and fallbacks are configured
+# at the bottom of this file. Because this config is under version control, those
+# entries are reviewed exactly like code.
 # =============================================================================
 
 # --- Inputs -----------------------------------------------------------------
@@ -56,3 +56,27 @@ workdir: results     # dir for the large temporary matUtils paths files
 # clade_paths: results/clade_paths.tsv
 
 # log: results/generate.log   # optional run log file
+
+# --- Human-approved resolution deviations -----------------------------------
+#
+# Representatives are matched to the tree by EXACT equality on the sample name
+# before the first '|' -- never a fuzzy/substring match. The two tables below are
+# the ONLY sanctioned deviations; an unresolvable representative with no entry
+# here is a hard error. Add an entry only after confirming the sample by hand in
+# the tree, and note the clade + reason. Revisit whenever the spec or tree changes.
+
+# Spec representative name -> exact tree sample name (field before '|').
+# These differ from the spec only by country abbreviation in the 2026-04-22 tree.
+representative_name_overrides:
+  IND/GBRC714b/2021: India/GJ-GBRC714b/2021                 # clade B.1.617.2
+  BGD/icddrb_TND_06_1053/2022: Bangladesh/icddrb_TND_06_1053/2022  # clade XBB
+
+# PANGO clade -> approved fallback when its representative is absent from the tree.
+#   via: founder                      -> use the clade's annotated MRCA node
+#   via: sample, name: ..., backtrack: n -> resolve an approved alternate sample
+representative_fallbacks:
+  # FRA/IHUCOVID-005193-N1/2021 is not in the 2026-04-22 gisaid-and-public MAT.
+  # P.1's only mask is the deletion [11288, 11296], also masked via B.1.1.7 and
+  # B.1.351; the annotated 20J (Gamma) founder anchors it faithfully.
+  P.1:
+    via: founder
