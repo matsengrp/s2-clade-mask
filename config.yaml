@@ -1,0 +1,58 @@
+# =============================================================================
+# s2-clade-mask configuration
+#
+# All run parameters for scripts/generate_usher_masked_sites.py live here. Run
+# the generator from the repo root so the relative paths below resolve:
+#
+#   python scripts/generate_usher_masked_sites.py --config config.yaml
+#
+# NOTE: the human-approved representative name-overrides and fallbacks are NOT
+# configured here -- they are reviewed code decisions in the generator itself
+# (REPRESENTATIVE_NAME_OVERRIDES / REPRESENTATIVE_FALLBACKS).
+# =============================================================================
+
+# --- Inputs -----------------------------------------------------------------
+
+# Full gisaid-and-public MAT (.pb.gz) and its metadata. Use the GISAID-named
+# files: their sample names are what the spec representatives match against.
+# Do NOT use a public-only tree (missing several GISAID-only representatives)
+# or a filtered per-run tree (all clades must be present / annotated).
+tree: /fh/fast/matsen_e/shared/viral-dasm/mat-trees/2026-04-22-gisaid-and-public/gisaidAndPublic.2026-04-22.masked.gisaidNames.pb.gz
+metadata: /fh/fast/matsen_e/shared/viral-dasm/mat-trees/2026-04-22-gisaid-and-public/gisaidAndPublic.2026-04-22.gisaidNames.metadata.tsv.gz
+
+# Vendored UCSC PANGO-lineage-keyed masking spec (input).
+branch_spec: data/branchSpecificMask.yml
+
+# --- Output -----------------------------------------------------------------
+
+output: results/usher_masked_sites.yaml
+
+# --- Old-scheme recovery check (optional) -----------------------------------
+
+# Reference masking file the output must remain a superset of, within the
+# site_include_range. Point at the previous generated output (or the mat-pcp
+# copy). Leave unset to skip the check.
+old_yaml: results/usher_masked_sites.yaml
+
+# --- Parameters -------------------------------------------------------------
+
+clade_column: Nextstrain_clade
+
+# Masks outside [start, end] (the 5'/3' UTRs) are dropped -- the mat-pcp range
+# filter discards those positions at runtime regardless.
+site_include_start: 266
+site_include_end: 29674
+
+strict: true       # fail (nonzero exit) if old masks are not fully recovered
+union_old: false   # force-include any unrecovered old masks instead of failing
+
+# --- Execution --------------------------------------------------------------
+
+matutils: matUtils   # binary name / path (from the `usher` conda package)
+workdir: results     # dir for the large temporary matUtils paths files
+
+# Precomputed matUtils outputs (optional; skip the matUtils extract passes):
+# sample_paths: results/sample_paths.tsv
+# clade_paths: results/clade_paths.tsv
+
+# log: results/generate.log   # optional run log file

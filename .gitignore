@@ -1,0 +1,23 @@
+# Large input trees / metadata (download separately; never commit)
+*.pb
+*.pb.gz
+*.metadata.tsv.gz
+*.taxonium.jsonl.gz
+
+# Intermediate matUtils extract outputs (land in results/ via workdir)
+sample_paths*.tsv
+clade_paths*.tsv
+*.log
+
+# results/ holds the generated output, which IS tracked; the large temporary
+# paths files above are ignored by pattern wherever they land.
+!results/usher_masked_sites.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Editor / OS
+.DS_Store
+*.swp

@@ -1,0 +1,15 @@
+name: s2-clade-mask
+# Conda environment for the s2-clade-mask generator.
+#   conda env create -f environment.yml
+#   conda activate s2-clade-mask
+#
+# The generator itself needs only the Python standard library plus pyyaml;
+# `usher` provides the `matUtils` binary used to extract sample/clade paths
+# from the mutation-annotated tree.
+channels:
+  - https://prefix.dev/conda-forge
+  - https://prefix.dev/bioconda
+dependencies:
+  - python >=3.9,<3.13
+  - usher >=0.6,<1.0    # provides matUtils
+  - pyyaml >=6.0,<7.0
