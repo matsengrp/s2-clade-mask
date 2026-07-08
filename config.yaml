@@ -30,9 +30,11 @@ output: results/usher_masked_sites.yaml
 # --- Old-scheme recovery check (optional) -----------------------------------
 
 # Reference masking file the output must remain a superset of, within the
-# site_include_range. Point at the previous generated output (or the mat-pcp
-# copy). Leave unset to skip the check.
-old_yaml: results/usher_masked_sites.yaml
+# site_include_range: the original hand-made scheme from jbloomlab/SARS2-mut-fitness
+# (vendored below; see its provenance header). This is a fixed historical
+# baseline, not the previous run's output -- always check against it, not
+# results/usher_masked_sites.yaml. Leave unset to skip the check.
+old_yaml: data/usher_masked_sites_old_scheme.yml
 
 # --- Parameters -------------------------------------------------------------
 

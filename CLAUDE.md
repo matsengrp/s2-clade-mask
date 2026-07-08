@@ -27,6 +27,7 @@ config.yaml                            # all run parameters (paths + options)
 environment.yml                        # conda env: usher (matUtils), python, pyyaml
 scripts/generate_usher_masked_sites.py # the generator
 data/branchSpecificMask.yml            # vendored UCSC input spec (pinned commit)
+data/usher_masked_sites_old_scheme.yml # vendored jbloomlab old-scheme baseline (pinned commit)
 results/usher_masked_sites.yaml        # generated output (tracked)
 ```
 
@@ -60,8 +61,11 @@ per-run tree.
    the clade and why — only after confirming the sample by hand; never add fuzzy
    matching to avoid one.
 4. **Superset recovery.** The output must remain a superset of the old hand-made
-   scheme within `site_include_range` (checked via `old_yaml` + `strict`). A true
-   shortfall is a bug to investigate, not to accept.
+   scheme within `site_include_range` (checked via `old_yaml` + `strict`). `old_yaml`
+   always points at the vendored `data/usher_masked_sites_old_scheme.yml` — the
+   original jbloomlab/SARS2-mut-fitness file, pinned at a fixed commit — never at a
+   previous run's `results/usher_masked_sites.yaml`. A true shortfall is a bug to
+   investigate, not to accept.
 5. **UTR masks dropped.** Masks outside `[site_include_start, site_include_end]`
    are omitted (mat-pcp discards those positions at runtime anyway).
 
@@ -72,8 +76,9 @@ per-run tree.
   `representative_fallbacks`) → `config.yaml`. Keep the schema in `CONFIG_DEFAULTS`
   / `REQUIRED_CONFIG` and the `validate_resolution_overrides` checks in sync with
   `config.yaml` and the README key table.
-- **Never hand-edit** `results/usher_masked_sites.yaml` (regenerate it) or
-  `data/branchSpecificMask.yml` (re-vendor it — see below).
+- **Never hand-edit** `results/usher_masked_sites.yaml` (regenerate it),
+  `data/branchSpecificMask.yml`, or `data/usher_masked_sites_old_scheme.yml`
+  (re-vendor them — see below).
 - Keep `README.md` and this file **in sync** with any change to layout, the config
   schema, the resolution logic, or the run procedure.
 
@@ -86,6 +91,12 @@ regenerate. If a representative was renamed or dropped upstream, the run fails
 loudly — confirm the sample by hand in the tree and add an approved
 `representative_name_overrides` (renamed) or `representative_fallbacks` (absent)
 entry to `config.yaml`. After regenerating, re-measure the count tables in the README.
+
+`data/usher_masked_sites_old_scheme.yml` (the `old_yaml` baseline) is a fixed
+historical reference, not something to refresh routinely — it should only ever
+change if the acceptance criterion itself is revisited (e.g. a different upstream
+commit is agreed to be the authoritative baseline). If that happens, re-download
+from the URL in its provenance header and update the block the same way.
 
 ## Sanity checks
 

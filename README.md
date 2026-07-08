@@ -23,7 +23,8 @@ s2-clade-mask/
 ├── scripts/
 │   └── generate_usher_masked_sites.py   # the generator
 ├── data/
-│   └── branchSpecificMask.yml      # vendored UCSC input spec (pinned commit)
+│   ├── branchSpecificMask.yml           # vendored UCSC input spec (pinned commit)
+│   └── usher_masked_sites_old_scheme.yml # vendored jbloomlab old-scheme baseline (pinned commit)
 └── results/
     └── usher_masked_sites.yaml     # generated output (tracked)
 ```
@@ -86,7 +87,7 @@ representatives match against.
 | `tree`, `metadata` | full gisaid-and-public MAT `.pb.gz` and its metadata (required unless `sample_paths` + `clade_paths` are precomputed) |
 | `branch_spec` | vendored UCSC spec (`data/branchSpecificMask.yml`) |
 | `output` | where to write the YAML (`results/usher_masked_sites.yaml`) |
-| `old_yaml` | reference file for the superset-recovery check (optional) |
+| `old_yaml` | reference file for the superset-recovery check (optional); the vendored original scheme, `data/usher_masked_sites_old_scheme.yml` |
 | `clade_column` | metadata clade column (default `Nextstrain_clade`) |
 | `site_include_start` / `site_include_end` | coding range `[266, 29674]`; UTR masks outside it are dropped |
 | `strict` | fail if old masks are not fully recovered |
@@ -247,6 +248,13 @@ mutation). Blocks without a `mutations:` field behave exactly as before, so the
 field is backward-compatible.
 
 ## How the new masks match the old ones
+
+The "old scheme" is the original hand-made
+[jbloomlab/SARS2-mut-fitness `usher_masked_sites.yaml`](https://github.com/jbloomlab/SARS2-mut-fitness/blob/main/data/usher_masked_sites.yaml),
+vendored at a pinned commit as `data/usher_masked_sites_old_scheme.yml` (see its
+provenance header). This is a fixed historical baseline the acceptance criterion
+checks against — always re-run against this vendored file, never against a
+previous `results/usher_masked_sites.yaml` output.
 
 > **Note — figures pending refresh.** The counts below were measured against a
 > **public-only** tree (`public-2026-07-01`) under an earlier *founder-primary*
