@@ -33,6 +33,7 @@ COMPARISON    = config.get("comparison_report", "results/anchoring_comparison.tx
 DISTANCES     = config.get("anchor_distances", "results/anchor_distances.yaml")
 ANCHOR_CHECK  = config.get("anchor_check_report", "results/anchor_check.txt")
 RECOVERY      = config.get("recovery_report", "results/recovery_report.txt")
+RECOVERY_SUMMARY = config.get("recovery_summary", "results/recovery_summary.txt")
 BRANCH_SPEC   = config["branch_spec"]
 METADATA      = config["metadata"]
 OLD_YAML      = config.get("old_yaml")
@@ -47,6 +48,7 @@ rule all:
         COMPARISON,
         ANCHOR_CHECK,
         RECOVERY,
+        RECOVERY_SUMMARY,
 
 
 rule extract_sample_paths:
@@ -133,7 +135,8 @@ rule check_recovery:
         yaml=OUTPUT,
         old=OLD_YAML if OLD_YAML else [],
     output:
-        RECOVERY,
+        report=RECOVERY,
+        summary=RECOVERY_SUMMARY,
     shell:
         "python scripts/check_recovery.py --config {CONFIG} "
-        "--yaml {input.yaml} --out {output}"
+        "--yaml {input.yaml} --out {output.report} --out-summary {output.summary}"

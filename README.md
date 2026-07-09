@@ -102,8 +102,9 @@ Rule DAG (`results/…` outputs in parentheses):
    tabulates the founder-vs-representative distance per clade (§ *Anchor cross-check*).
 5. `check_anchors` (`anchor_check.txt`) — fails the run if any founder anchor is
    more than `max_anchor_distance` mutations (patristic) from its representative.
-6. `check_recovery` (`recovery_report.txt`) — the old-scheme superset check on the
-   Nextstrain output; under `strict: true` a true shortfall fails the run.
+6. `check_recovery` (`recovery_report.txt`, `recovery_summary.txt`) — the old-scheme
+   superset check on the Nextstrain output (pass/fail), plus the per-clade
+   added-mask summary table; under `strict: true` a true shortfall fails the run.
 
 To skip the ~1 h matUtils passes during development, point `sample_paths` /
 `clade_paths` in `config.yaml` at precomputed TSVs — those files then satisfy the
@@ -146,7 +147,7 @@ representatives match against.
 | `matutils`, `workdir` | binary name and scratch dir for the large paths files |
 | `sample_paths`, `clade_paths` | precomputed matUtils outputs (skip the extract passes) |
 | `nodes_representative`, `nodes_founder` | Mode 1 / Mode 2 node-map intermediates (pipeline; gitignored) |
-| `comparison_report`, `anchor_distances`, `anchor_check_report`, `recovery_report` | pipeline diagnostic reports (gitignored) |
+| `comparison_report`, `anchor_distances`, `anchor_check_report`, `recovery_report`, `recovery_summary` | pipeline diagnostic reports (gitignored) |
 | `log` | optional run-log file |
 | `representative_name_overrides` | spec rep name → exact tree name, for reviewed renames (see §3) |
 | `representative_absent_ok` | clades whose representative is genuinely absent from the tree (cross-check skipped; founder anchoring still applies — see §3) |
@@ -345,6 +346,68 @@ passes (exit 0): every old `(clade, site)` pair is preserved, with 141 whole-sit
 mutation downgrades (in `22B` / `22D` / `22E`), 217 old UTR masks intentionally
 dropped, and zero truly missing. `strict: true` makes any *true* shortfall a hard
 error; `union_old: true` would force-include unrecovered old masks.
+
+### Per-clade breakdown of added masks
+
+Beyond recovering the old masks, the new scheme adds many more. The table below
+counts, per Nextstrain clade, the in-range **masked positions** (a position counts
+whether it is masked whole-site *or* via a mutation) in the old vs. new scheme, and
+how many the new scheme **adds** (masked now, not before). This is a snapshot of
+`results/recovery_summary.txt`, which the `check_recovery` rule regenerates on every
+run; refresh the snapshot below from that file when the spec/tree change. Measured
+on the 2026-04-22 tree:
+
+| clade | old | new | added | | clade | old | new | added |
+|---|--:|--:|--:|---|---|--:|--:|--:|
+| 20B | 0 | 9 | **9** *(new clade)* | | 23B | 0 | 82 | **82** *(new clade)* |
+| 20H | 9 | 9 | 0 | | 23C | 0 | 92 | **92** *(new clade)* |
+| 20I | 9 | 9 | 0 | | 23D | 0 | 82 | **82** *(new clade)* |
+| 20J | 9 | 9 | 0 | | 23E | 0 | 89 | **89** *(new clade)* |
+| 21A | 23 | 23 | 0 | | 23F | 0 | 82 | **82** *(new clade)* |
+| 21I | 23 | 23 | 0 | | 23G | 0 | 82 | **82** *(new clade)* |
+| 21J | 23 | 23 | 0 | | 23H | 0 | 82 | **82** *(new clade)* |
+| 21K | 63 | 64 | **1** | | 23I | 0 | 109 | **109** *(new clade)* |
+| 21L | 11 | 37 | **26** | | 24A | 0 | 117 | **117** *(new clade)* |
+| 21M | 0 | 20 | **20** *(new clade)* | | 24B | 0 | 118 | **118** *(new clade)* |
+| 22A | 26 | 52 | **26** | | 24C | 0 | 117 | **117** *(new clade)* |
+| 22B | 61 | 86 | **25** | | 24D | 0 | 117 | **117** *(new clade)* |
+| 22C | 11 | 37 | **26** | | 24E | 0 | 128 | **128** *(new clade)* |
+| 22D | 66 | 93 | **27** | | 24F | 0 | 117 | **117** *(new clade)* |
+| 22E | 61 | 88 | **27** | | 24G | 0 | 117 | **117** *(new clade)* |
+| 22F | 11 | 83 | **72** | | 24H | 0 | 117 | **117** *(new clade)* |
+| 23A | 0 | 82 | **82** *(new clade)* | | 24I | 0 | 117 | **117** *(new clade)* |
+| | | | | | 25A | 0 | 117 | **117** *(new clade)* |
+| | | | | | 25B | 0 | 117 | **117** *(new clade)* |
+| | | | | | 25C | 0 | 117 | **117** *(new clade)* |
+
+**Totals: 406 → 2863 masked positions, +2457 added.** Of those, **2227** fall in
+the **23 clades absent from the old hand-made scheme** (`20B`, `21M`, and all of
+`23*`/`24*`/`25*`) and **230** are added within the **14 clades the old scheme
+already had**. The four oldest clades (`20H`/`20I`/`20J`, `21A`/`21I`/`21J`) gain
+nothing — the old scheme already covered them fully. Counting *distinct genomic
+positions* (across all clades) rather than clade-position pairs, the scheme grows
+from 161 → 273 masked positions (+112 never masked in any clade before).
+
+The added masks come from **topological inheritance** down the tree: each
+Nextstrain block accumulates the masks of *every* PANGO spec clade on its lineage
+(the `# accumulated from PANGO clades: [...]` comment in each block records which),
+whereas the 2022 hand-made scheme was transcribed only from the early
+`maskDelta.sh` era and covered a subset of clades and sites. Two illustrative
+cases:
+
+- **`21L` (BA.2), +26.** Accumulates from `['BA.2']`. The old scheme masked only
+  BA.2's recurring `11288–11296` deletion and the homoplasic `28877`/`28878` pair;
+  the new scheme adds the rest of the in-range `BA.2` spec entry — two more
+  deletions (`21633–21641`, `28361–28371`), three amplicon-dropout sites
+  (`22786`, `22882`, `23854`), and three recurrent multi-mutation sites (`28245`,
+  `28251`, `28254`). (The `BA.2` entry's UTR sites are dropped by the range filter.)
+- **`22F` (XBB), +72.** Much larger because XBB sits deeper in the tree and is a
+  recombinant. Its block accumulates from `['BA.2', 'XBB', 'XBB.1', 'XBB.1.5']`:
+  the same 26 BA.2 whole-site masks, plus XBB's own deletion/homopolymer sites
+  (`21991–21995`, `21998`; 6 positions), plus XBB's large 38-mutation `reversions`
+  list (XBB has "lots of false reversions"), plus one reversion each from `XBB.1`
+  (`T22317G`) and `XBB.1.5` (`T27915G`) — 26 + 6 + 40 = 72, of which the 40
+  reversions are masked at the mutation level rather than whole-site.
 
 ## Updating the vendored spec
 

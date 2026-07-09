@@ -63,7 +63,9 @@ the **primary** anchor) + `resolve_representative` (Mode 1, string match — use
 to cross-check) → `compare_and_build` (writes both YAMLs plus the anchor-distance
 table `anchoring_comparison.txt` / machine-readable `anchor_distances.yaml`) →
 `check_anchors` (fails if a founder anchor is more than `max_anchor_distance`
-mutations from its representative) + `check_recovery`. Each stage is cached, so
+mutations from its representative) + `check_recovery` (old-scheme superset pass/fail
+`recovery_report.txt` **and** the per-clade added-mask summary table
+`recovery_summary.txt`, both regenerated each run). Each stage is cached, so
 troubleshooting doesn't re-pay for the ~1 h / ~19 GB `--sample-paths` extract.
 During development, set `sample_paths` / `clade_paths` in `config.yaml` to
 precomputed TSVs so the extract rules are skipped.

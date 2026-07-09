@@ -142,10 +142,14 @@ def main(argv=None):
     missing = {}
     if args.old_yaml:
         old_sites = lib.load_old_sites(args.old_yaml)
+        rng = (args.site_include_start, args.site_include_end)
         missing = lib.check_recovers_old(
-            old_sites, ns_masks, args.union_old,
-            include_range=(args.site_include_start, args.site_include_end),
+            old_sites, ns_masks, args.union_old, include_range=rng,
             log_file=log_file)
+        # Per-clade added-mask summary table (regenerated each run; mirrors README).
+        lib.write_recovery_summary(args.recovery_summary, old_sites, ns_masks, rng,
+                                   gen_yaml=args.output, old_yaml=args.old_yaml)
+        lib.log(f"Wrote added-mask summary to {args.recovery_summary}", log_file)
 
     dropped_exclusions = {c: e["exclusions"] for c, e in spec.items() if e["exclusions"]}
     tree_name = os.path.basename(args.tree) if args.tree else "(sample-paths supplied)"

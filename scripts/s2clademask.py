@@ -782,6 +782,103 @@ def check_recovers_old(old_sites, clade_masks, union_old, include_range=None,
     return truly_missing
 
 
+def summarize_added_masks(old_sites, clade_masks, include_range):
+    """Per-clade tally of masked positions the new scheme adds over the old one.
+
+    A genome position counts as *masked* for a clade whether it is masked
+    whole-site or via a mutation. Restricted to ``include_range`` (old UTR masks are
+    dropped by design, so counting them would be misleading). Returns
+    ``(rows, totals)`` where ``rows`` is a list of dicts sorted by clade
+    (``{clade, old, new, added, new_clade}``) and ``totals`` carries the aggregate
+    counts (grand totals, split of added masks between old-scheme-absent clades and
+    the shared clades, and distinct-position growth across all clades).
+    """
+    lo, hi = include_range
+
+    def positions(sites, muts=()):
+        pos = {int(s) for s in sites if lo <= int(s) <= hi}
+        for m in muts:
+            p = int(m[1:-1])
+            if lo <= p <= hi:
+                pos.add(p)
+        return pos
+
+    old_pos = {c: positions(s) for c, s in old_sites.items()}
+    new_pos = {c: positions(b.get("sites", ()), b.get("mutations", ()))
+               for c, b in clade_masks.items()}
+    old_clades = set(old_pos)
+
+    rows = []
+    added_in_new_clades = added_in_shared = 0
+    for clade in sorted(set(old_pos) | set(new_pos)):
+        o, n = old_pos.get(clade, set()), new_pos.get(clade, set())
+        added = n - o
+        is_new = clade not in old_clades
+        rows.append({"clade": clade, "old": len(o), "new": len(n),
+                     "added": len(added), "new_clade": is_new})
+        if is_new:
+            added_in_new_clades += len(added)
+        else:
+            added_in_shared += len(added)
+
+    old_all = set().union(*old_pos.values()) if old_pos else set()
+    new_all = set().union(*new_pos.values()) if new_pos else set()
+    totals = {
+        "old": sum(r["old"] for r in rows),
+        "new": sum(r["new"] for r in rows),
+        "added": sum(r["added"] for r in rows),
+        "added_in_new_clades": added_in_new_clades,
+        "added_in_shared": added_in_shared,
+        "n_new_clades": sum(1 for r in rows if r["new_clade"]),
+        "distinct_old": len(old_all),
+        "distinct_new": len(new_all),
+        "distinct_added": len(new_all - old_all),
+    }
+    return rows, totals
+
+
+def write_recovery_summary(out_path, old_sites, clade_masks, include_range,
+                           gen_yaml=None, old_yaml=None):
+    """Write the per-clade added-masks summary table (regenerated each run).
+
+    A companion to the pass/fail ``recovery_report``: it quantifies, per Nextstrain
+    clade, how many in-range masked positions the new scheme carries vs the old
+    hand-made scheme and how many it adds. Mirrors the snapshot table in README.md
+    so that snapshot can be refreshed from a real run.
+    """
+    lo, hi = include_range
+    rows, t = summarize_added_masks(old_sites, clade_masks, include_range)
+    lines = []
+    lines.append("=" * 66)
+    lines.append("ADDED-MASK SUMMARY  (new scheme  vs  old hand-made scheme)")
+    lines.append(f"masked positions in range [{lo}, {hi}]; a position counts whether")
+    lines.append("masked whole-site or via a mutation. 'added' = masked now, not before.")
+    if gen_yaml or old_yaml:
+        lines.append(f"new: {gen_yaml}")
+        lines.append(f"old: {old_yaml}")
+    lines.append("=" * 66)
+    lines.append("")
+    lines.append(f"{'clade':9} {'old':>5} {'new':>5} {'added':>6}  note")
+    for r in rows:
+        note = "new clade (absent from old scheme)" if r["new_clade"] else ""
+        lines.append(f"{r['clade']:9} {r['old']:>5} {r['new']:>5} "
+                     f"{r['added']:>6}  {note}")
+    lines.append("-" * 66)
+    lines.append(f"{'TOTAL':9} {t['old']:>5} {t['new']:>5} {t['added']:>6}")
+    lines.append("")
+    lines.append(f"Added masks: {t['added']} total "
+                 f"({t['added_in_new_clades']} in the {t['n_new_clades']} clades "
+                 f"absent from the old scheme, {t['added_in_shared']} in the shared "
+                 "clades the old scheme already had).")
+    lines.append(f"Distinct genomic positions masked (any clade): "
+                 f"{t['distinct_old']} -> {t['distinct_new']} "
+                 f"(+{t['distinct_added']} never masked in any clade before).")
+    lines.append("")
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines) + "\n")
+    return rows, t
+
+
 # ---------------------------------------------------------------------------
 # 6. Emit usher_masked_sites.yaml
 # ---------------------------------------------------------------------------
@@ -884,6 +981,7 @@ CONFIG_DEFAULTS = {
     "anchor_distances": "results/anchor_distances.yaml",         # machine-readable table
     "anchor_check_report": "results/anchor_check.txt",           # assertion result
     "recovery_report": "results/recovery_report.txt",            # old-scheme recovery
+    "recovery_summary": "results/recovery_summary.txt",          # per-clade added-mask table
     # Human-approved resolution deviations (see validate_resolution_overrides):
     "representative_name_overrides": {},  # spec rep name -> exact tree name
     "representative_absent_ok": [],       # clades whose rep may be absent (skip check)

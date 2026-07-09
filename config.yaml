@@ -78,7 +78,8 @@ workdir: results     # dir for the large temporary matUtils paths files
 # comparison_report: results/anchoring_comparison.txt       # anchor distance table
 # anchor_distances: results/anchor_distances.yaml           # machine-readable table
 # anchor_check_report: results/anchor_check.txt             # assertion result
-# recovery_report: results/recovery_report.txt              # old-scheme recovery
+# recovery_report: results/recovery_report.txt              # old-scheme recovery pass/fail
+# recovery_summary: results/recovery_summary.txt            # per-clade added-mask table
 
 # log: results/generate.log   # optional run log file
 
