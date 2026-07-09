@@ -25,7 +25,12 @@ branch_spec: data/branchSpecificMask.yml
 
 # --- Output -----------------------------------------------------------------
 
+# Two masking YAMLs are written, both founder-anchored:
+#   output       -> Nextstrain-clade keyed (consumed by mat-pcp)
+#   output_pango -> PANGO-lineage keyed companion (each clade accumulates its
+#                   ancestral PANGO clades' masks; no Nextstrain coarsening)
 output: results/usher_masked_sites.yaml
+output_pango: results/usher_masked_sites_pango.yaml
 
 # --- Old-scheme recovery check (optional) -----------------------------------
 
@@ -48,6 +53,12 @@ site_include_end: 29674
 strict: true       # fail (nonzero exit) if old masks are not fully recovered
 union_old: false   # force-include any unrecovered old masks instead of failing
 
+# Anchor cross-check: each clade is founder-anchored; fail if a clade's founder
+# node sits more than this many mutations (patristic) from its representative
+# node. 4 is the current empirical maximum (BA.2.75); keep it as tight as the data
+# allows so a genuinely mis-resolved anchor is caught.
+max_anchor_distance: 4
+
 # --- Execution --------------------------------------------------------------
 
 matutils: matUtils   # binary name / path (from the `usher` conda package)
@@ -60,22 +71,25 @@ workdir: results     # dir for the large temporary matUtils paths files
 # clade_paths: results/clade_paths.tsv
 
 # Staged-pipeline intermediates / diagnostic reports (optional; these are the
-# defaults -- the Snakemake rules write them and compare_and_build/check_recovery
-# read them). All are gitignored and regenerated each run.
+# defaults -- the Snakemake rules write them and the downstream rules read them).
+# All are gitignored and regenerated each run.
 # nodes_representative: results/nodes_representative.yaml   # Mode 1 node map
 # nodes_founder: results/nodes_founder.yaml                 # Mode 2 node map
-# comparison_report: results/anchoring_comparison.txt       # rep-vs-founder diff
+# comparison_report: results/anchoring_comparison.txt       # anchor distance table
+# anchor_distances: results/anchor_distances.yaml           # machine-readable table
+# anchor_check_report: results/anchor_check.txt             # assertion result
 # recovery_report: results/recovery_report.txt              # old-scheme recovery
 
 # log: results/generate.log   # optional run log file
 
 # --- Human-approved resolution deviations -----------------------------------
 #
+# Each clade is anchored at its annotated founder (MRCA) node. The representative
+# sample is resolved only to cross-check that anchor (max_anchor_distance, above).
 # Representatives are matched to the tree by EXACT equality on the sample name
 # before the first '|' -- never a fuzzy/substring match. The two tables below are
-# the ONLY sanctioned deviations; an unresolvable representative with no entry
-# here is a hard error. Add an entry only after confirming the sample by hand in
-# the tree, and note the clade + reason. Revisit whenever the spec or tree changes.
+# the ONLY sanctioned deviations; add an entry only after confirming the sample by
+# hand in the tree, and note the clade + reason. Revisit when the spec/tree change.
 
 # Spec representative name -> exact tree sample name (field before '|').
 # These differ from the spec only by country abbreviation in the 2026-04-22 tree.
@@ -83,12 +97,12 @@ representative_name_overrides:
   IND/GBRC714b/2021: India/GJ-GBRC714b/2021                 # clade B.1.617.2
   BGD/icddrb_TND_06_1053/2022: Bangladesh/icddrb_TND_06_1053/2022  # clade XBB
 
-# PANGO clade -> approved fallback when its representative is absent from the tree.
-#   via: founder                      -> use the clade's annotated MRCA node
-#   via: sample, name: ..., backtrack: n -> resolve an approved alternate sample
-representative_fallbacks:
+# Clades whose representative sample is genuinely absent from the tree. Founder
+# anchoring still applies (the founder must be present); the founder-vs-rep
+# cross-check is simply skipped for these. An absent representative NOT listed here
+# is a hard error.
+representative_absent_ok:
   # FRA/IHUCOVID-005193-N1/2021 is not in the 2026-04-22 gisaid-and-public MAT.
-  # P.1's only mask is the deletion [11288, 11296], also masked via B.1.1.7 and
-  # B.1.351; the annotated 20J (Gamma) founder anchors it faithfully.
-  P.1:
-    via: founder
+  # P.1 is founder-anchored at its 20J (Gamma) MRCA; its only mask (deletion
+  # [11288, 11296]) is also masked via B.1.1.7 and B.1.351.
+  - P.1

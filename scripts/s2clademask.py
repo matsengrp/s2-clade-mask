@@ -149,39 +149,36 @@ def parse_clade_paths(path):
 # ---------------------------------------------------------------------------
 # Human-approved resolution overrides (supplied via config)
 #
-# Representative samples are resolved to tree nodes by an EXACT comparison of the
-# spec name against the tree sample name before the first ``|``. No fuzzy or
-# substring matching is ever performed. When a spec representative does not match
-# the tree verbatim, or is absent from the tree entirely, resolution requires a
-# deliberate, human-reviewed entry in the config -- ``representative_name_overrides``
-# (a renamed sample) or ``representative_fallbacks`` (a substituted node) -- so a
-# maintainer signs off on every single deviation. The config is under version
-# control, so these entries are reviewed exactly like code. A spec representative
-# that is neither found nor listed is a hard error, not a silent guess.
+# Each PANGO clade is anchored at its annotated **founder (MRCA) node** -- always
+# present in a full gisaid-and-public MAT, and a hard error if missing. The clade's
+# **representative sample** is resolved only to *cross-check* the founder: we assert
+# the representative and founder anchors are within ``max_anchor_distance``
+# mutations of each other (patristic). Representative samples are matched to the
+# tree by EXACT comparison of the spec name against the tree name before the first
+# ``|`` (never fuzzy). ``representative_name_overrides`` records a human-confirmed
+# renamed sample. If a representative is genuinely absent from the tree, its clade
+# must be listed in ``representative_absent_ok`` (so the cross-check is knowingly
+# skipped for it); an unlisted absent representative is a hard error, not a guess.
+# The config is version-controlled, so these entries are reviewed like code.
 # ---------------------------------------------------------------------------
 
 
-def validate_resolution_overrides(name_overrides, fallbacks):
-    """Sanity-check the config-supplied override/fallback tables (fail loudly)."""
+def validate_resolution_overrides(name_overrides, absent_ok):
+    """Sanity-check the config-supplied override / absent-ok tables (fail loudly)."""
     if not isinstance(name_overrides, dict):
         raise ValueError("config 'representative_name_overrides' must be a mapping")
     for k, v in name_overrides.items():
         if not isinstance(v, str):
             raise ValueError(
                 f"representative_name_overrides['{k}'] must be a string tree name")
-    if not isinstance(fallbacks, dict):
-        raise ValueError("config 'representative_fallbacks' must be a mapping")
-    for clade, fb in fallbacks.items():
-        if not isinstance(fb, dict) or "via" not in fb:
+    if not isinstance(absent_ok, (list, tuple)):
+        raise ValueError(
+            "config 'representative_absent_ok' must be a list of clade names")
+    for c in absent_ok:
+        if not isinstance(c, str):
             raise ValueError(
-                f"representative_fallbacks['{clade}'] must be a mapping with a 'via' key")
-        if fb["via"] not in ("founder", "sample"):
-            raise ValueError(
-                f"representative_fallbacks['{clade}'].via must be 'founder' or "
-                f"'sample' (got {fb['via']!r})")
-        if fb["via"] == "sample" and not fb.get("name"):
-            raise ValueError(
-                f"representative_fallbacks['{clade}'] with via=sample needs a 'name'")
+                "representative_absent_ok entries must be clade-name strings "
+                f"(got {c!r})")
 
 
 def resolve_representative_nodes(clade_search, sample_paths_file, log_file=None):
@@ -269,9 +266,10 @@ def resolve_representative_only(spec, sample_paths_file, name_overrides,
 
     Returns ``(clade_to_node, via, unresolved)``: the resolved nodes, how each was
     resolved (``"representative"`` / ``"name override"``), and the sorted list of
-    clades whose representative is absent from the tree (candidates for an approved
-    fallback in ``apply_fallbacks``). Run against the full **gisaid-and-public**
-    MAT; the public-only tree is missing several GISAID-only representatives.
+    clades whose representative is absent from the tree (each of which must be
+    listed in ``representative_absent_ok`` or the run fails). Run against the full
+    **gisaid-and-public** MAT; the public-only tree is missing several GISAID-only
+    representatives.
     """
     # Build the search name for each clade (approved override, or the spec name).
     search = {}
@@ -300,89 +298,26 @@ def resolve_representative_only(spec, sample_paths_file, name_overrides,
     return clade_to_node, via, unresolved
 
 
-def apply_fallbacks(spec, clade_to_node, via, clade_founders, sample_paths_file,
-                    fallbacks, log_file=None):
-    """Fill in clades unresolved by Mode 1 using human-approved config fallbacks.
+def resolve_founder_or_fail(spec, clade_founders, log_file=None):
+    """Founder-primary anchor for every PANGO clade; hard error if any is missing.
 
-    Steps 3-4 of the resolution policy. ``clade_to_node`` / ``via`` are Mode 1's
-    output (mutated in place and also returned). For every clade in ``spec`` not
-    already resolved:
-
-    3. **Approved fallback** (``representative_fallbacks[clade]``): ``via: founder``
-       uses the clade's annotated founder (MRCA) node -- the Mode-2 anchor -- and
-       ``via: sample`` resolves an approved alternate sample from
-       ``sample_paths_file``.
-    4. Otherwise **fail loudly** naming the clade -- a maintainer must add an
-       override or fallback; the script never guesses.
+    Returns ``clade_to_node`` mapping each spec clade to its annotated founder
+    (MRCA) node. A clade with no annotated founder in the tree is a hard error
+    (design invariant #1: the founder is the primary anchor and must be present --
+    run against the full gisaid-and-public MAT, where every spec clade is
+    annotated).
     """
-    still_missing = []
-    for clade in (c for c in spec if c not in clade_to_node):
-        fb = fallbacks.get(clade)
-        if fb is None:
-            still_missing.append(clade)
-            continue
-        kind = fb.get("via")
-        if kind == "founder":
-            node = clade_founders.get(clade)
-            if node is None:
-                raise ValueError(
-                    f"Approved 'founder' fallback for clade {clade}, but the clade "
-                    "has no annotated founder node in the tree."
-                )
-            clade_to_node[clade] = node
-            via[clade] = "approved founder fallback"
-        elif kind == "sample":
-            alt = fb["name"]
-            alt_res = resolve_representative_nodes(
-                {clade: {"name": alt, "backtrack": fb.get("backtrack", 0)}},
-                sample_paths_file, log_file)
-            if clade not in alt_res:
-                raise ValueError(
-                    f"Approved alternate sample '{alt}' for clade {clade} was not "
-                    "found in the tree either."
-                )
-            clade_to_node[clade] = alt_res[clade]
-            via[clade] = f"approved alternate sample ({alt})"
-        else:
-            raise ValueError(
-                f"Unknown fallback kind {kind!r} for clade {clade} in "
-                "config representative_fallbacks."
-            )
-
-    if still_missing:
+    founder_node, no_founder = resolve_founder_nodes(spec, clade_founders)
+    if no_founder:
         detail = "\n".join(
-            f"    {c}: representative '{spec[c]['representative']}' not found in the tree"
-            for c in sorted(still_missing)
-        )
+            f"    {c}: no annotated founder node in the tree" for c in no_founder)
         raise ValueError(
-            "Could not resolve a tree node for the following clade(s): their "
-            "representative sample is absent from the tree and no approved "
-            "override/fallback exists. Add an entry to the config's "
-            "representative_name_overrides (if the sample is present under a "
-            "different name) or representative_fallbacks (to approve the founder "
-            f"node or an alternate sample):\n{detail}"
-        )
-
-    for clade in sorted(clade_to_node):
-        log(f"  {clade} -> {clade_to_node[clade]} (via {via[clade]})", log_file)
-    return clade_to_node, via
-
-
-def resolve_clade_nodes(spec, clade_founders, sample_paths_file,
-                        name_overrides, fallbacks, log_file=None):
-    """Authoritative PANGO-clade -> tree-node resolver (Mode 1 + approved fallback).
-
-    Composes ``resolve_representative_only`` (representative-primary, name
-    overrides) with ``apply_fallbacks`` (approved per-clade founder/sample
-    fallbacks; hard error otherwise). This is the single source of truth for the
-    final anchoring, used by the one-shot ``generate_usher_masked_sites.py``; the
-    staged pipeline reaches the same result by running the two steps as separate
-    rules. Returns ``(clade_to_node, via)``.
-    """
-    clade_to_node, via, _ = resolve_representative_only(
-        spec, sample_paths_file, name_overrides, log_file)
-    return apply_fallbacks(spec, clade_to_node, via, clade_founders,
-                           sample_paths_file, fallbacks, log_file)
+            "The following PANGO clade(s) have no annotated founder (MRCA) node in "
+            "the tree, so they cannot be founder-anchored. Run against the full "
+            "gisaid-and-public MAT where every clade is annotated:\n" + detail)
+    for clade in sorted(founder_node):
+        log(f"  {clade} -> {founder_node[clade]} (founder)", log_file)
+    return founder_node
 
 
 # ---------------------------------------------------------------------------
@@ -453,13 +388,20 @@ def capture_ancestor_chains(sample_paths_file, target_nodes, log_file=None):
 
 
 def assign_masks_by_founder(spec, pango_node, ns_full_values, clade_founders,
-                            sample_paths_file, log_file=None):
-    """Return ``{bare_nextstrain_clade: set(pango_clade_names)}``.
+                            sample_paths_file, log_file=None, chains=None):
+    """Return ``{bare_target_clade: set(pango_clade_names)}``.
 
-    Each PANGO clade ``P`` is anchored at its **representative node** ``r(P)`` (in
-    ``pango_node``) -- the same node ``matUtils mask`` applies the mask to upstream
-    -- while each Nextstrain clade ``C`` is anchored at its annotated **founder**
-    (MRCA) node. ``C`` inherits ``P``'s masks when either:
+    ``pango_node`` maps each source PANGO clade to its anchor node; ``ns_full_values``
+    are the *target* clade labels to attribute masks to (Nextstrain full values like
+    ``"22A (BA.4)"`` for the Nextstrain output, or the PANGO clade names themselves
+    for the PANGO-level output). Each target's founder (MRCA) node comes from
+    ``clade_founders``. Pass a precomputed ``chains`` dict (from
+    ``capture_ancestor_chains``, covering every anchor + target founder node) to
+    reuse a single sample-paths scan across both outputs.
+
+    Each PANGO clade ``P`` is anchored at node ``r(P)`` (in ``pango_node``); each
+    target clade ``C`` is anchored at its founder node. ``C`` inherits ``P``'s masks
+    when either:
 
     (a) ``P`` is an ancestor of ``C`` (``r(P)`` lies on the root->founder(C)
         path) -- every sample of ``C`` descends from ``r(P)``, so the mask applies
@@ -497,7 +439,8 @@ def assign_masks_by_founder(spec, pango_node, ns_full_values, clade_founders,
     ns_nodes = set(ns_founder.values())
 
     targets = set(pango_node.values()) | ns_nodes
-    chains = capture_ancestor_chains(sample_paths_file, targets, log_file)
+    if chains is None:
+        chains = capture_ancestor_chains(sample_paths_file, targets, log_file)
     chain_sets = {n: set(c) for n, c in chains.items()}
 
     ns_to_pango = defaultdict(set)
@@ -569,44 +512,121 @@ def restrict_to_include_range(clade_masks, start, end, log_file=None):
     return dropped_sites, dropped_muts
 
 
-def build_masks_for_nodes(spec, node_map, ns_full_values, clade_founders,
-                          sample_paths_file, start, end, log_file=None):
-    """Run the full over-mask assignment for one PANGO-clade->node anchoring.
+def build_masks_for_nodes(spec, node_map, target_full_values, clade_founders,
+                          sample_paths_file, start, end, log_file=None, chains=None):
+    """Run the full over-mask assignment for one anchoring, for one target level.
 
     Convenience wrapper around ``assign_masks_by_founder`` -> ``build_clade_masks``
-    -> ``restrict_to_include_range``. ``node_map`` maps ``pango_clade -> anchor
-    node id`` (representatives, founders, or a mix). Returns the in-range
-    ``{bare_ns_clade: {"sites", "mutations", "sources"}}`` map the generator emits.
+    -> ``restrict_to_include_range``. ``node_map`` maps ``pango_clade -> anchor node
+    id``; ``target_full_values`` are the target clade labels (Nextstrain full values,
+    or the PANGO clade names for the PANGO-level output). Pass ``chains`` to reuse a
+    single sample-paths scan. Returns the in-range
+    ``{bare_target_clade: {"sites", "mutations", "sources"}}`` map.
     """
     ns_to_pango = assign_masks_by_founder(
-        spec, node_map, ns_full_values, clade_founders, sample_paths_file, log_file)
+        spec, node_map, target_full_values, clade_founders, sample_paths_file,
+        log_file, chains=chains)
     clade_masks = build_clade_masks(spec, ns_to_pango, log_file)
     restrict_to_include_range(clade_masks, start, end, log_file)
     return clade_masks
 
 
-def diff_masks(rep_masks, founder_masks):
-    """Diff two ``{ns_clade: {"sites","mutations"}}`` maps.
+# ---------------------------------------------------------------------------
+# Anchor cross-check: representative vs. founder patristic distance
+# ---------------------------------------------------------------------------
 
-    Returns ``{ns_clade: {"sites_only_rep", "sites_only_founder", "muts_only_rep",
-    "muts_only_founder"}}`` for the Nextstrain clades whose masks differ between
-    the two anchorings.
+
+def _capture_token_chains(sample_paths_file, target_nodes, log_file=None):
+    """Like ``capture_ancestor_chains`` but keeps each node's mutation tokens.
+
+    Returns ``{node: [tokens]}`` where each token is ``node_id:MUT,MUT`` (or bare
+    ``node_id``) along the root->node path, so branch mutation counts are available.
     """
-    diffs = {}
-    for clade in sorted(set(rep_masks) | set(founder_masks)):
-        r = rep_masks.get(clade, {})
-        f = founder_masks.get(clade, {})
-        r_sites, f_sites = r.get("sites", set()), f.get("sites", set())
-        r_muts, f_muts = r.get("mutations", set()), f.get("mutations", set())
-        entry = {
-            "sites_only_rep": r_sites - f_sites,
-            "sites_only_founder": f_sites - r_sites,
-            "muts_only_rep": r_muts - f_muts,
-            "muts_only_founder": f_muts - r_muts,
+    remaining = set(target_nodes)
+    chains = {}
+    with open_maybe_gzip(sample_paths_file) as f:
+        for line in f:
+            tab = line.find("\t")
+            if tab < 0:
+                continue
+            toks = [t for t in line[tab + 1:].split(" ") if t]
+            ids = [t.split(":", 1)[0] for t in toks]
+            for node in remaining.intersection(ids):
+                chains[node] = toks[: ids.index(node) + 1]
+                remaining.discard(node)
+            if not remaining:
+                break
+    if remaining:
+        log(f"  WARNING: {len(remaining)} anchor node(s) never appeared in any "
+            f"sample path: {sorted(remaining)}", log_file)
+    return chains
+
+
+def _token_muts(token):
+    """Mutation strings carried by one ``node_id:MUT,MUT`` sample-path token."""
+    if ":" not in token:
+        return []
+    payload = token.split(":", 1)[1]
+    return [m for m in payload.split(",") if m]
+
+
+def compute_anchor_distances(founder_node, rep_node, sample_paths_file,
+                             log_file=None):
+    """Patristic distance between each clade's founder anchor and representative.
+
+    For every clade in ``founder_node`` returns an entry describing how far its
+    founder (MRCA) anchor sits from its representative anchor, walking the tree:
+
+    * ``rep_absent`` -- the representative is not in the tree (no distance).
+    * otherwise ``relation`` (identical / one ancestral to the other / siblings via
+      a common ancestor), ``d_nodes`` and ``d_muts`` (patristic distances = edges /
+      nucleotide mutations summed along both branches from their last common
+      ancestor), and ``diff_muts`` (the sorted set of tree mutations separating the
+      two anchors).
+
+    One sample-paths scan (mutation-preserving) covers all anchors.
+    """
+    targets = set(founder_node.values()) | {n for n in rep_node.values() if n}
+    chains = _capture_token_chains(sample_paths_file, targets, log_file)
+
+    def ids_of(chain):
+        return [t.split(":", 1)[0] for t in chain]
+
+    out = {}
+    for clade, fo in founder_node.items():
+        r = rep_node.get(clade)
+        if r is None:
+            out[clade] = {"founder": fo, "rep": None, "rep_absent": True}
+            continue
+        rc, fc = chains.get(r), chains.get(fo)
+        if not rc or not fc:
+            out[clade] = {"founder": fo, "rep": r, "rep_absent": False,
+                          "error": "anchor node not found in any sample path"}
+            continue
+        rids, fids = ids_of(rc), ids_of(fc)
+        k = 0
+        while k < len(rids) and k < len(fids) and rids[k] == fids[k]:
+            k += 1
+        seg_r, seg_f = rc[k:], fc[k:]  # branches below the last common ancestor
+        diff = []
+        for t in seg_r:
+            diff += _token_muts(t)
+        for t in seg_f:
+            diff += _token_muts(t)
+        if not seg_r and not seg_f:
+            relation = "identical"
+        elif not seg_f:
+            relation = "founder ancestral to representative"
+        elif not seg_r:
+            relation = "representative ancestral to founder"
+        else:
+            relation = "siblings (via common ancestor)"
+        out[clade] = {
+            "founder": fo, "rep": r, "rep_absent": False, "relation": relation,
+            "d_nodes": len(seg_r) + len(seg_f), "d_muts": len(diff),
+            "diff_muts": sorted(set(diff)),
         }
-        if any(entry.values()):
-            diffs[clade] = entry
-    return diffs
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -767,18 +787,27 @@ def check_recovers_old(old_sites, clade_masks, union_old, include_range=None,
 # ---------------------------------------------------------------------------
 
 
-def write_output(out_path, clade_masks, spec, provenance, dropped_exclusions):
-    """Write the Nextstrain-clade-keyed masking YAML, one block per clade."""
+def write_output(out_path, clade_masks, spec, provenance, dropped_exclusions,
+                 level="Nextstrain"):
+    """Write a clade-keyed masking YAML, one block per clade.
+
+    ``level`` is ``"Nextstrain"`` (the mat-pcp output, over-mask-coarsened to
+    Nextstrain clades) or ``"PANGO"`` (the per-PANGO-lineage companion output).
+    """
+    coarsen = ("and coarsened to Nextstrain clades (over-mask policy for PANGO "
+               "clades finer than a Nextstrain clade)."
+               if level == "Nextstrain" else
+               "keyed by PANGO lineage (each clade accumulates its ancestral PANGO "
+               "clades' masks; no Nextstrain coarsening).")
     lines = []
     lines.append("# ============================================================"
                  "=================")
     lines.append("# GENERATED FILE -- DO NOT EDIT BY HAND.")
     lines.append("#")
-    lines.append("# Produced by the s2-clade-mask generator generate_usher_masked_sites.py")
+    lines.append(f"# {level}-clade masking file produced by the s2-clade-mask generator")
     lines.append("# from the PANGO-lineage-keyed UCSC spec data/branchSpecificMask.yml, resolved")
     lines.append("# against a full gisaid-and-public MAT + metadata. Masks are accumulated down the")
-    lines.append("# tree (topology-based inheritance) and coarsened to Nextstrain clades")
-    lines.append("# (over-mask policy for PANGO clades finer than a Nextstrain clade).")
+    lines.append(f"# tree (topology-based inheritance) {coarsen}")
     lines.append("# Sites and reversion mutations outside the pipeline's")
     lines.append("# site_include_range (the UTRs) are omitted for simplicity -- they")
     lines.append("# are discarded by the range filter at runtime regardless.")
@@ -788,7 +817,7 @@ def write_output(out_path, clade_masks, spec, provenance, dropped_exclusions):
     if dropped_exclusions:
         lines.append("#")
         lines.append("# NOTE: the following per-sample 'exclusions' from the source spec")
-        lines.append("# cannot be represented at Nextstrain-clade granularity and were")
+        lines.append("# cannot be represented at clade granularity and were")
         lines.append("# dropped (their sites remain masked clade-wide):")
         for clade, exs in dropped_exclusions.items():
             for ex in exs:
@@ -824,7 +853,7 @@ def write_output(out_path, clade_masks, spec, provenance, dropped_exclusions):
 # All run parameters come from a YAML config file (default: config.yaml). Paths
 # are resolved relative to the working directory the command is run from (the
 # repo root). This includes the human-approved representative_name_overrides /
-# representative_fallbacks tables -- the config is version-controlled, so those
+# representative_absent_ok tables -- the config is version-controlled, so those
 # entries are reviewed exactly like code.
 # ---------------------------------------------------------------------------
 
@@ -842,15 +871,22 @@ CONFIG_DEFAULTS = {
     "union_old": False,          # force-include any unrecovered old masks
     "strict": False,             # exit nonzero if old masks are not fully recovered
     "log": None,
+    # Second output: per-PANGO-lineage masks (companion to the Nextstrain output).
+    "output_pango": "results/usher_masked_sites_pango.yaml",
+    # Anchor cross-check: fail if a clade's founder anchor sits more than this many
+    # mutations (patristic) from its representative anchor.
+    "max_anchor_distance": 4,
     # Staged-pipeline intermediates / reports (defaults under workdir; the
-    # Snakemake rules write these, and compare_and_build/check_recovery read them):
+    # Snakemake rules write these and the downstream rules read them):
     "nodes_representative": "results/nodes_representative.yaml",  # Mode 1 node map
     "nodes_founder": "results/nodes_founder.yaml",               # Mode 2 node map
-    "comparison_report": "results/anchoring_comparison.txt",     # rep-vs-founder diff
+    "comparison_report": "results/anchoring_comparison.txt",     # anchor distance table
+    "anchor_distances": "results/anchor_distances.yaml",         # machine-readable table
+    "anchor_check_report": "results/anchor_check.txt",           # assertion result
     "recovery_report": "results/recovery_report.txt",            # old-scheme recovery
     # Human-approved resolution deviations (see validate_resolution_overrides):
     "representative_name_overrides": {},  # spec rep name -> exact tree name
-    "representative_fallbacks": {},       # clade -> {via: founder|sample, ...}
+    "representative_absent_ok": [],       # clades whose rep may be absent (skip check)
 }
 REQUIRED_CONFIG = ("branch_spec", "metadata", "output")
 

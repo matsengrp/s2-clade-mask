@@ -41,7 +41,7 @@ def main(argv=None):
     cfg = lib.load_config(cli.config)
     log_file = cfg["log"]
     lib.validate_resolution_overrides(cfg["representative_name_overrides"],
-                                      cfg["representative_fallbacks"])
+                                      cfg["representative_absent_ok"])
     spec, version = lib.parse_branch_spec(cfg["branch_spec"])
     lib.log(f"Parsed {len(spec)} PANGO clades, spec version {version}", log_file)
 
@@ -54,9 +54,22 @@ def main(argv=None):
         if not sample_paths:
             raise ValueError("mode representative needs --sample-paths (or config 'sample_paths')")
         lib.log("Mode 1 (representative / string match): resolving representative "
-                "sample nodes...", log_file)
+                "sample nodes (for the founder cross-check)...", log_file)
         clade_to_node, via, unresolved = lib.resolve_representative_only(
             spec, sample_paths, cfg["representative_name_overrides"], log_file)
+        # An absent representative is only acceptable if the maintainer has approved
+        # it in representative_absent_ok (its founder cross-check is then skipped).
+        not_ok = [c for c in unresolved if c not in cfg["representative_absent_ok"]]
+        if not_ok:
+            detail = "\n".join(
+                f"    {c}: representative '{spec[c]['representative']}' not found"
+                for c in sorted(not_ok))
+            raise ValueError(
+                "The following clade(s) have a representative absent from the tree "
+                "and are not listed in config representative_absent_ok. Confirm the "
+                "sample by hand, then add a representative_name_overrides entry (if "
+                "renamed) or list the clade in representative_absent_ok (if truly "
+                f"absent):\n{detail}")
         meta = {"mode": "representative", "spec_version": version,
                 "source": os.path.abspath(sample_paths)}
     else:
@@ -66,15 +79,14 @@ def main(argv=None):
         clade_founders = lib.parse_clade_paths(clade_paths)
         lib.log(f"Parsed {len(clade_founders):,} clade annotations from {clade_paths}",
                 log_file)
-        lib.log("Mode 2 (founder / MRCA): resolving annotated founder nodes...", log_file)
-        clade_to_node, no_founder = lib.resolve_founder_nodes(spec, clade_founders)
+        lib.log("Mode 2 (founder / MRCA): resolving annotated founder nodes "
+                "(the primary anchor)...", log_file)
+        # Founder is the primary anchor: it must exist for every clade.
+        clade_to_node = lib.resolve_founder_or_fail(spec, clade_founders, log_file)
         via = {c: "founder" for c in clade_to_node}
-        unresolved = no_founder
+        unresolved = []
         meta = {"mode": "founder", "spec_version": version,
                 "source": os.path.abspath(clade_paths)}
-        if no_founder:
-            lib.log(f"  {len(no_founder)} clade(s) have no annotated founder node: "
-                    f"{no_founder}", log_file)
 
     lib.write_nodes(cli.out, clade_to_node, via=via, unresolved=unresolved, meta=meta)
     lib.log(f"Resolved {len(clade_to_node)}/{len(spec)} clades ({len(unresolved)} "

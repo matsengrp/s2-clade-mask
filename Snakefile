@@ -28,7 +28,10 @@ CLADE_PATHS  = config.get("clade_paths")  or "results/clade_paths.tsv"
 NODES_REP     = config.get("nodes_representative", "results/nodes_representative.yaml")
 NODES_FOUNDER = config.get("nodes_founder", "results/nodes_founder.yaml")
 OUTPUT        = config["output"]
+OUTPUT_PANGO  = config.get("output_pango", "results/usher_masked_sites_pango.yaml")
 COMPARISON    = config.get("comparison_report", "results/anchoring_comparison.txt")
+DISTANCES     = config.get("anchor_distances", "results/anchor_distances.yaml")
+ANCHOR_CHECK  = config.get("anchor_check_report", "results/anchor_check.txt")
 RECOVERY      = config.get("recovery_report", "results/recovery_report.txt")
 BRANCH_SPEC   = config["branch_spec"]
 METADATA      = config["metadata"]
@@ -40,7 +43,9 @@ CONFIG = workflow.configfiles[0] if workflow.configfiles else "config.yaml"
 rule all:
     input:
         OUTPUT,
+        OUTPUT_PANGO,
         COMPARISON,
+        ANCHOR_CHECK,
         RECOVERY,
 
 
@@ -89,7 +94,7 @@ rule resolve_founder:
 
 
 rule compare_and_build:
-    """Diff the two anchorings (report-only) and emit the final YAML."""
+    """Emit the founder-anchored Nextstrain + PANGO YAMLs and the anchor table."""
     input:
         nodes_representative=NODES_REP,
         nodes_founder=NODES_FOUNDER,
@@ -99,17 +104,31 @@ rule compare_and_build:
         branch_spec=BRANCH_SPEC,
     output:
         yaml=OUTPUT,
+        pango=OUTPUT_PANGO,
         comparison=COMPARISON,
+        distances=DISTANCES,
     shell:
         "python scripts/compare_and_build.py --config {CONFIG} "
         "--nodes-representative {input.nodes_representative} "
         "--nodes-founder {input.nodes_founder} "
         "--sample-paths {input.sample_paths} --clade-paths {input.clade_paths} "
-        "--out-yaml {output.yaml} --out-comparison {output.comparison}"
+        "--out-yaml {output.yaml} --out-pango {output.pango} "
+        "--out-comparison {output.comparison} --out-distances {output.distances}"
+
+
+rule check_anchors:
+    """Fail if any founder anchor is too far (mutations) from its representative."""
+    input:
+        distances=DISTANCES,
+    output:
+        ANCHOR_CHECK,
+    shell:
+        "python scripts/check_anchors.py --config {CONFIG} "
+        "--distances {input.distances} --out {output}"
 
 
 rule check_recovery:
-    """Verify the generated YAML is a superset of the vendored old scheme."""
+    """Verify the Nextstrain-clade YAML is a superset of the vendored old scheme."""
     input:
         yaml=OUTPUT,
         old=OLD_YAML if OLD_YAML else [],

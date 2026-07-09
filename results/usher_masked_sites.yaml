@@ -1,11 +1,10 @@
 # =============================================================================
 # GENERATED FILE -- DO NOT EDIT BY HAND.
 #
-# Produced by the s2-clade-mask generator generate_usher_masked_sites.py
+# Nextstrain-clade masking file produced by the s2-clade-mask generator
 # from the PANGO-lineage-keyed UCSC spec data/branchSpecificMask.yml, resolved
 # against a full gisaid-and-public MAT + metadata. Masks are accumulated down the
-# tree (topology-based inheritance) and coarsened to Nextstrain clades
-# (over-mask policy for PANGO clades finer than a Nextstrain clade).
+# tree (topology-based inheritance) and coarsened to Nextstrain clades (over-mask policy for PANGO clades finer than a Nextstrain clade).
 # Sites and reversion mutations outside the pipeline's
 # site_include_range (the UTRs) are omitted for simplicity -- they
 # are discarded by the range filter at runtime regardless.
@@ -15,9 +14,10 @@
 # metadata:      gisaidAndPublic.2026-04-22.gisaidNames.metadata.tsv.gz
 # clade column:  Nextstrain_clade
 # include range: [266, 29674] (masks outside this range are omitted)
+# anchoring:     founder (MRCA) node per PANGO clade
 #
 # NOTE: the following per-sample 'exclusions' from the source spec
-# cannot be represented at Nextstrain-clade granularity and were
+# cannot be represented at clade granularity and were
 # dropped (their sites remain masked clade-wide):
 #   BA.2.86: site 23599 (rep England/CLIMB-CM7YJM45/2025)
 # =============================================================================
@@ -72,17 +72,16 @@ mask_21K:
   mutations: ['G26530A']
 
 mask_21L:
-  # accumulated from PANGO clades: ['BA.2', 'BA.2.75']
+  # accumulated from PANGO clades: ['BA.2']
   clades:
     - 21L
   sites: [11288, 11289, 11290, 11291, 11292, 11293, 11294, 11295, 11296, 21633, 21634, 21635, 21636, 21637, 21638, 21639, 21640, 21641, 22786, 22882, 23854, 28245, 28251, 28254, 28361, 28362, 28363, 28364, 28365, 28366, 28367, 28368, 28369, 28370, 28371, 28877, 28878]
-  mutations: ['A15451G', 'A22033C', 'A22331G', 'A22578G', 'A22775G', 'A22898G', 'A22992G', 'A22995C', 'A23604C', 'A24469T', 'C22016T', 'C22577G', 'C22679T', 'C23013A', 'C23075T', 'C29510A', 'G12444A', 'G18163A', 'G20055A', 'G22001A', 'G22190A', 'G22200T', 'G22688A', 'G22942T', 'G23055A', 'G23403A', 'G23599T', 'G26275A', 'G26577C', 'G670T', 'G9424A', 'T10029C', 'T10198C', 'T19955C', 'T21618C', 'T22674C', 'T22686C', 'T22813G', 'T23063A', 'T23525C', 'T23948G', 'T24424A', 'T25000C', 'T26270C', 'T27807C', 'T2790C', 'T28271A', 'T3037C', 'T3796C', 'T3927C', 'T4321C', 'T4586C', 'T5183C', 'T9534C', 'T9866C']
 
 mask_21M:
-  # accumulated from PANGO clades: ['BA.2', 'BA.3.2', 'RE.1.1', 'XBC']
+  # accumulated from PANGO clades: ['BA.3.2', 'RE.1.1', 'XBC']
   clades:
     - 21M
-  sites: [11288, 11289, 11290, 11291, 11292, 11293, 11294, 11295, 11296, 21633, 21634, 21635, 21636, 21637, 21638, 21639, 21640, 21641, 22289, 22290, 22291, 22292, 22293, 22294, 22786, 22882, 23854, 28245, 28251, 28254, 28361, 28362, 28363, 28364, 28365, 28366, 28367, 28368, 28369, 28370, 28371, 28877, 28878]
+  sites: [22289, 22290, 22291, 22292, 22293, 22294, 28254]
   mutations: ['A27395T', 'A336G', 'C13375T', 'C22629A', 'C27382G', 'C27718T', 'G5584A', 'T13019C', 'T22329C', 'T25000C', 'T27807C', 'T28271A', 'T28996A']
 
 mask_22A:
@@ -92,7 +91,7 @@ mask_22A:
   sites: [686, 687, 688, 689, 690, 691, 692, 693, 694, 11288, 11289, 11290, 11291, 11292, 11293, 11294, 11295, 11296, 21633, 21634, 21635, 21636, 21637, 21638, 21639, 21640, 21641, 21765, 21766, 21767, 21768, 21769, 21770, 22786, 22882, 23854, 28245, 28251, 28254, 28361, 28362, 28363, 28364, 28365, 28366, 28367, 28368, 28369, 28370, 28371, 28877, 28878]
 
 mask_22B:
-  # accumulated from PANGO clades: ['BA.2', 'BA.5', 'BQ.1']
+  # accumulated from PANGO clades: ['BA.2', 'BA.5']
   clades:
     - 22B
   sites: [11288, 11289, 11290, 11291, 11292, 11293, 11294, 11295, 11296, 21633, 21634, 21635, 21636, 21637, 21638, 21639, 21640, 21641, 21765, 21766, 21767, 21768, 21769, 21770, 22786, 22882, 23854, 28245, 28251, 28254, 28361, 28362, 28363, 28364, 28365, 28366, 28367, 28368, 28369, 28370, 28371, 28877, 28878]
@@ -119,18 +118,18 @@ mask_22E:
   mutations: ['A12160G', 'A22578G', 'A22775G', 'A22942T', 'A22992G', 'A22995C', 'A23604C', 'A26529G', 'A26709G', 'A4184G', 'C22679T', 'C22893A', 'C23013A', 'C23075T', 'C29510A', 'G18163A', 'G20055A', 'G22200T', 'G22688A', 'G22882T', 'G22917T', 'G23018T', 'G23055A', 'G23403A', 'G23599T', 'G26577C', 'G670T', 'G9424A', 'T10198C', 'T15714C', 'T17410C', 'T19955C', 'T21618C', 'T22674C', 'T22686C', 'T22813G', 'T23063A', 'T23525C', 'T25000C', 'T27807C', 'T27889C', 'T2790C', 'T28271A', 'T3037C', 'T4321C', 'T9534C']
 
 mask_22F:
-  # accumulated from PANGO clades: ['BA.2', 'XBB', 'XBB.1']
+  # accumulated from PANGO clades: ['BA.2', 'XBB', 'XBB.1', 'XBB.1.5']
   clades:
     - 22F
   sites: [11288, 11289, 11290, 11291, 11292, 11293, 11294, 11295, 11296, 21633, 21634, 21635, 21636, 21637, 21638, 21639, 21640, 21641, 21991, 21992, 21993, 21994, 21995, 21998, 22786, 22882, 23854, 28245, 28251, 28254, 28361, 28362, 28363, 28364, 28365, 28366, 28367, 28368, 28369, 28370, 28371, 28877, 28878]
-  mutations: ['A22000C', 'A22578G', 'A22664C', 'A22898G', 'A22992G', 'A22995C', 'A24469T', 'A26709G', 'A4184G', 'C17859T', 'C21810T', 'C22577G', 'C22599G', 'C22679T', 'C22895G', 'C22896T', 'C23013A', 'C23019T', 'C23031T', 'G19326A', 'G22109C', 'G22688A', 'G22942T', 'G26577C', 'G9424A', 'T10198C', 'T21618C', 'T22317G', 'T22686C', 'T22813G', 'T24424A', 'T25000C', 'T26060C', 'T26858C', 'T27807C', 'T2790C', 'T3037C', 'T4321C', 'T9344C']
+  mutations: ['A22000C', 'A22578G', 'A22664C', 'A22898G', 'A22992G', 'A22995C', 'A24469T', 'A26709G', 'A4184G', 'C17859T', 'C21810T', 'C22577G', 'C22599G', 'C22679T', 'C22895G', 'C22896T', 'C23013A', 'C23019T', 'C23031T', 'G19326A', 'G22109C', 'G22688A', 'G22942T', 'G26577C', 'G9424A', 'T10198C', 'T21618C', 'T22317G', 'T22686C', 'T22813G', 'T24424A', 'T25000C', 'T26060C', 'T26858C', 'T27807C', 'T2790C', 'T27915G', 'T3037C', 'T4321C', 'T9344C']
 
 mask_23A:
-  # accumulated from PANGO clades: ['BA.2', 'XBB', 'XBB.1', 'XBB.1.5', 'XCK']
+  # accumulated from PANGO clades: ['BA.2', 'XBB', 'XBB.1', 'XCK']
   clades:
     - 23A
   sites: [11288, 11289, 11290, 11291, 11292, 11293, 11294, 11295, 11296, 21633, 21634, 21635, 21636, 21637, 21638, 21639, 21640, 21641, 21991, 21992, 21993, 21994, 21995, 21998, 22786, 22882, 23854, 28245, 28251, 28254, 28361, 28362, 28363, 28364, 28365, 28366, 28367, 28368, 28369, 28370, 28371, 28877, 28878]
-  mutations: ['A22000C', 'A22578G', 'A22664C', 'A22898G', 'A22992G', 'A22995C', 'A24469T', 'A26709G', 'A4184G', 'C17859T', 'C21810T', 'C22577G', 'C22599G', 'C22679T', 'C22895G', 'C22896T', 'C23013A', 'C23019T', 'C23031T', 'G19326A', 'G22109C', 'G22688A', 'G22942T', 'G26577C', 'G9424A', 'T10198C', 'T21618C', 'T22317G', 'T22686C', 'T22813G', 'T24424A', 'T25000C', 'T26060C', 'T26858C', 'T27807C', 'T2790C', 'T27915G', 'T3037C', 'T4321C', 'T9344C']
+  mutations: ['A22000C', 'A22578G', 'A22664C', 'A22898G', 'A22992G', 'A22995C', 'A24469T', 'A26709G', 'A4184G', 'C17859T', 'C21810T', 'C22577G', 'C22599G', 'C22679T', 'C22895G', 'C22896T', 'C23013A', 'C23019T', 'C23031T', 'G19326A', 'G22109C', 'G22688A', 'G22942T', 'G26577C', 'G9424A', 'T10198C', 'T21618C', 'T22317G', 'T22686C', 'T22813G', 'T24424A', 'T25000C', 'T26060C', 'T26858C', 'T27807C', 'T2790C', 'T3037C', 'T4321C', 'T9344C']
 
 mask_23B:
   # accumulated from PANGO clades: ['BA.2', 'XBB', 'XBB.1']
@@ -168,11 +167,11 @@ mask_23F:
   mutations: ['A22000C', 'A22578G', 'A22664C', 'A22898G', 'A22992G', 'A22995C', 'A24469T', 'A26709G', 'A4184G', 'C17859T', 'C21810T', 'C22577G', 'C22599G', 'C22679T', 'C22895G', 'C22896T', 'C23013A', 'C23019T', 'C23031T', 'G19326A', 'G22109C', 'G22688A', 'G22942T', 'G26577C', 'G9424A', 'T10198C', 'T21618C', 'T22317G', 'T22686C', 'T22813G', 'T24424A', 'T25000C', 'T26060C', 'T26858C', 'T27807C', 'T2790C', 'T3037C', 'T4321C', 'T9344C']
 
 mask_23G:
-  # accumulated from PANGO clades: ['BA.2', 'XBB', 'XBB.1', 'XBB.1.5']
+  # accumulated from PANGO clades: ['BA.2', 'XBB', 'XBB.1']
   clades:
     - 23G
   sites: [11288, 11289, 11290, 11291, 11292, 11293, 11294, 11295, 11296, 21633, 21634, 21635, 21636, 21637, 21638, 21639, 21640, 21641, 21991, 21992, 21993, 21994, 21995, 21998, 22786, 22882, 23854, 28245, 28251, 28254, 28361, 28362, 28363, 28364, 28365, 28366, 28367, 28368, 28369, 28370, 28371, 28877, 28878]
-  mutations: ['A22000C', 'A22578G', 'A22664C', 'A22898G', 'A22992G', 'A22995C', 'A24469T', 'A26709G', 'A4184G', 'C17859T', 'C21810T', 'C22577G', 'C22599G', 'C22679T', 'C22895G', 'C22896T', 'C23013A', 'C23019T', 'C23031T', 'G19326A', 'G22109C', 'G22688A', 'G22942T', 'G26577C', 'G9424A', 'T10198C', 'T21618C', 'T22317G', 'T22686C', 'T22813G', 'T24424A', 'T25000C', 'T26060C', 'T26858C', 'T27807C', 'T2790C', 'T27915G', 'T3037C', 'T4321C', 'T9344C']
+  mutations: ['A22000C', 'A22578G', 'A22664C', 'A22898G', 'A22992G', 'A22995C', 'A24469T', 'A26709G', 'A4184G', 'C17859T', 'C21810T', 'C22577G', 'C22599G', 'C22679T', 'C22895G', 'C22896T', 'C23013A', 'C23019T', 'C23031T', 'G19326A', 'G22109C', 'G22688A', 'G22942T', 'G26577C', 'G9424A', 'T10198C', 'T21618C', 'T22317G', 'T22686C', 'T22813G', 'T24424A', 'T25000C', 'T26060C', 'T26858C', 'T27807C', 'T2790C', 'T3037C', 'T4321C', 'T9344C']
 
 mask_23H:
   # accumulated from PANGO clades: ['BA.2', 'XBB', 'XBB.1']

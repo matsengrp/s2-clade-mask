@@ -11,13 +11,16 @@ clade_paths*.tsv
 
 # Staged-pipeline intermediates / diagnostic reports (regenerated each run)
 nodes_*.yaml
+anchor_distances.yaml
+anchor_check.txt
 *_comparison.txt
 *_report.txt
 .snakemake/
 
-# results/ holds the generated output, which IS tracked; the large temporary
+# results/ holds the generated outputs, which ARE tracked; the large temporary
 # paths files and intermediates above are ignored by pattern wherever they land.
 !results/usher_masked_sites.yaml
+!results/usher_masked_sites_pango.yaml
 
 # Python
 __pycache__/
