@@ -69,8 +69,10 @@ snakemake -n                                          # dry-run the pipeline DAG
 python scripts/generate_usher_masked_sites.py --help  # or the one-shot wrapper
 ```
 
-`usher` supplies the `matUtils` binary and `snakemake` runs the staged pipeline;
-the generation code itself only needs the Python standard library plus `pyyaml`.
+The `s2-clade-mask` conda env created above supplies everything the pipeline
+needs: `usher` (the `matUtils` binary), `snakemake` (which runs the staged
+pipeline), `gh` (GitHub CLI, for issues/PRs), and Python with `pyyaml`. The
+generation code itself only uses the Python standard library plus `pyyaml`.
 
 ## Usage
 
