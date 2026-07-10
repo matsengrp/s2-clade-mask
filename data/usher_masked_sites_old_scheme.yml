@@ -7,7 +7,7 @@
 #   url:    https://github.com/jbloomlab/SARS2-mut-fitness/blob/6b6c9bcb4ef49e414d1b41f0888fd94fef41df79/data/usher_masked_sites.yaml
 #
 # This is the original, hand-made Nextstrain-clade-keyed masking scheme that
-# scripts/generate_usher_masked_sites.py's output must remain a superset of
+# the s2-clade-mask generator's output must remain a superset of
 # (within site_include_range) -- see check_recovers_old / the old-scheme
 # recovery check in config.yaml (old_yaml). It is a fixed historical baseline,
 # not something to re-download on every run: only re-vendor it if the

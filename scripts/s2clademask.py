@@ -3,17 +3,17 @@
 
 This module holds every piece of logic used to turn the UCSC PANGO-lineage-keyed
 ``branchSpecificMask.yml`` into the Nextstrain-clade-keyed ``usher_masked_sites.yaml``
-that ``mat-pcp`` consumes. It is imported by both:
-
-* the staged Snakemake pipeline (``Snakefile`` + the thin ``scripts/*.py`` rule
-  entrypoints ``extract_paths.py`` / ``resolve_nodes.py`` / ``compare_and_build.py``
-  / ``check_recovery.py``), and
-* the one-shot wrapper ``scripts/generate_usher_masked_sites.py``.
+that ``mat-pcp`` consumes (and the companion PANGO-lineage-keyed
+``usher_masked_sites_pango.yaml``). It is imported by the staged Snakemake pipeline
+(``Snakefile`` + the thin ``scripts/*.py`` rule entrypoints ``extract_paths.py`` /
+``resolve_nodes.py`` / ``compare_and_build.py`` / ``check_anchors.py`` /
+``check_recovery.py``).
 
 All the algorithm's write-up lives in ``README.md``; this module keeps the
-functions and the design invariants (representative-primary resolution, exact
-matching only, human-approved deviations, superset recovery, UTR drop) in one
-place so the pipeline scripts stay thin and never re-implement logic.
+functions and the design invariants (founder-primary resolution with a
+representative cross-check, exact matching only, human-approved deviations,
+superset recovery, UTR drop) in one place so the pipeline scripts stay thin and
+never re-implement logic.
 """
 
 import os

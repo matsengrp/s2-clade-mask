@@ -8,7 +8,7 @@
 #
 # This is the PANGO-lineage-keyed, tree-topology-based masking spec that
 # replaced the old maskDelta.sh approach (see yatisht/usher#324). It is consumed
-# by workflow/scripts/generate_usher_masked_sites.py, which resolves each
+# by the s2-clade-mask generator, which resolves each
 # clade's representative sample to a tree node, computes ancestry, and generates
 # the Nextstrain-clade-keyed data/usher_masked_sites.yaml used by the pipeline.
 #

@@ -1,10 +1,10 @@
 # =============================================================================
 # s2-clade-mask configuration
 #
-# All run parameters for scripts/generate_usher_masked_sites.py live here. Run
-# the generator from the repo root so the relative paths below resolve:
+# All run parameters for the pipeline live here. Run Snakemake from the repo root
+# so the relative paths below resolve:
 #
-#   python scripts/generate_usher_masked_sites.py --config config.yaml
+#   snakemake --cores 4
 #
 # The human-approved representative name-overrides and fallbacks are configured
 # at the bottom of this file. Because this config is under version control, those

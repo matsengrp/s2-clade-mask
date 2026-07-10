@@ -36,8 +36,7 @@ s2-clade-mask/
 │   ├── resolve_nodes.py                 # rule: resolve clades in one anchoring mode
 │   ├── compare_and_build.py             # rule: emit both YAMLs + anchor cross-check table
 │   ├── check_anchors.py                 # rule: enforce max_anchor_distance
-│   ├── check_recovery.py                # rule: superset recovery vs old scheme
-│   └── generate_usher_masked_sites.py   # optional one-shot wrapper (same logic, single process)
+│   └── check_recovery.py                # rule: superset recovery vs old scheme
 ├── data/
 │   ├── branchSpecificMask.yml           # vendored UCSC input spec (pinned commit)
 │   └── usher_masked_sites_old_scheme.yml # vendored jbloomlab old-scheme baseline (pinned commit)
@@ -130,12 +129,6 @@ must be present / annotated). At the Hutch a recent tree lives at
 `config.yaml` at the **GISAID-named** files (`*.gisaidNames.pb.gz` /
 `*.gisaidNames.metadata.tsv.gz`), whose sample names are what the spec
 representatives match against.
-
-> **One-shot alternative.** `python scripts/generate_usher_masked_sites.py --config
-> config.yaml` runs every stage in a single process — same library, identical
-> outputs, same anchor cross-check. It's handy for a quick local run, but it doesn't
-> cache the expensive intermediates or write the standalone report files, so the
-> Snakemake pipeline above is the recommended path.
 
 `config.yaml` keys:
 

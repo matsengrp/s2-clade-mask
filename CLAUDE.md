@@ -34,17 +34,14 @@ scripts/resolve_nodes.py               # rule: resolve clades in one anchoring m
 scripts/compare_and_build.py           # rule: emit both YAMLs + the anchor cross-check table
 scripts/check_anchors.py               # rule: enforce max_anchor_distance (founder vs representative)
 scripts/check_recovery.py              # rule: old-scheme superset recovery check
-scripts/generate_usher_masked_sites.py # one-shot wrapper (same lib, single process)
 data/branchSpecificMask.yml            # vendored UCSC input spec (pinned commit)
 data/usher_masked_sites_old_scheme.yml # vendored jbloomlab old-scheme baseline (pinned commit)
 results/usher_masked_sites.yaml        # generated Nextstrain-clade output (tracked)
 results/usher_masked_sites_pango.yaml  # generated PANGO-clade output (tracked)
 ```
 
-The generation logic lives in **one place** — `scripts/s2clademask.py`. Both the
-Snakemake rule scripts and the one-shot wrapper import it; **never** duplicate
-logic into a rule script. The pipeline and the wrapper must produce an identical
-`results/usher_masked_sites.yaml` because they call the same functions.
+The generation logic lives in **one place** — `scripts/s2clademask.py`. The
+Snakemake rule scripts import it; **never** duplicate logic into a rule script.
 
 ## Running
 
@@ -52,9 +49,7 @@ logic into a rule script. The pipeline and the wrapper must produce an identical
 conda env create -f environment.yml
 conda activate s2-clade-mask
 # from the repo root, so relative paths in config.yaml resolve:
-snakemake --cores 4                                        # primary path (staged, cached)
-# or the equivalent one-shot process:
-python scripts/generate_usher_masked_sites.py --config config.yaml
+snakemake --cores 4                                        # staged, cached pipeline
 ```
 
 The Snakemake pipeline is the primary path: `extract_sample_paths` /
@@ -112,10 +107,9 @@ several GISAID-only representatives) or a filtered per-run tree.
 
 - **All generation logic → `scripts/s2clademask.py`.** The rule scripts
   (`extract_paths.py`, `resolve_nodes.py`, `compare_and_build.py`,
-  `check_anchors.py`, `check_recovery.py`) and the one-shot
-  `generate_usher_masked_sites.py` are thin entrypoints that import the library; do
-  not reimplement logic in them. Adding a Snakemake rule means adding a thin script
-  + a rule, not a second copy of an algorithm.
+  `check_anchors.py`, `check_recovery.py`) are thin entrypoints that import the
+  library; do not reimplement logic in them. Adding a Snakemake rule means adding a
+  thin script + a rule, not a second copy of an algorithm.
 - **All run inputs** — tree/metadata paths, both outputs, ranges, strict,
   `max_anchor_distance`, the pipeline intermediate/report paths, *and* the reviewed
   masking decisions (`representative_name_overrides` / `representative_absent_ok`) →
@@ -149,7 +143,7 @@ from the URL in its provenance header and update the block the same way.
 
 ## Sanity checks
 
-- `python scripts/generate_usher_masked_sites.py --help` (imports resolve);
+- `python scripts/compare_and_build.py --help` (rule-script imports resolve);
   `snakemake -n` shows the expected DAG.
 - `load_config` rejects unknown keys and missing required keys.
 - A full run exits 0 only if: every clade has a founder node, every founder anchor
