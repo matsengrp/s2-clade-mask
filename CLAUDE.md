@@ -60,8 +60,11 @@ table `anchoring_comparison.txt` / machine-readable `anchor_distances.yaml`) →
 `check_anchors` (fails if a founder anchor is more than `max_anchor_distance`
 mutations from its representative) + `check_recovery` (old-scheme superset pass/fail
 `recovery_report.txt` **and** the per-clade added-mask summary table
-`recovery_summary.txt`, both regenerated each run). Each stage is cached, so
-troubleshooting doesn't re-pay for the ~1 h / ~19 GB `--sample-paths` extract.
+`recovery_summary.txt`, both regenerated each run). Each stage's output is cached
+and re-runs only when its inputs change — except the ~19 GB `sample_paths.tsv`, a
+`temp` output deleted once `compare_and_build` has read it, so re-running a later
+stage re-triggers the ~1 h `--sample-paths` extract unless you pass
+`snakemake --notemp` (keep intermediates while developing).
 
 All run parameters come from `config.yaml`. The pipeline always runs against the
 **full gisaid-and-public** MAT — never the public-only tree (missing several
