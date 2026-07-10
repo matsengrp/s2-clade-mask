@@ -160,8 +160,7 @@ The pipeline runs as a DAG of cached rules (`results/…` outputs in parentheses
    superset check on the Nextstrain output (pass/fail), plus the per-clade
    added-mask summary table; under `strict: true` a true shortfall fails the run.
 
-Each rule is a thin entrypoint that imports `scripts/s2clademask.py`; the numbered
-stages below are the shared generation logic those rules run.
+The numbered stages below detail the generation logic these rules carry out.
 
 ### 1. Parse the UCSC spec (`parse_branch_spec`)
 
