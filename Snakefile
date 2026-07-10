@@ -15,7 +15,11 @@
 # passes always run against `config["tree"]` and produce the TSVs below.
 # =============================================================================
 
+import os
+
 configfile: "config.yaml"
+
+MATUTILS = config.get("matutils", "matUtils")
 
 SAMPLE_PATHS = "results/sample_paths.tsv"
 CLADE_PATHS  = "results/clade_paths.tsv"
@@ -46,6 +50,15 @@ rule all:
         RECOVERY_SUMMARY,
 
 
+# matUtils extract writes its output relative to its `-d` directory, prepending
+# that dir even to an *absolute* --sample-paths/--clade-paths path -- so a bare
+# path lands in a bogus nested location ($CWD/fh/.../out.tsv) and the intended file
+# is never written. Passing `-d /` together with an absolute out path makes the
+# prepend collapse (`/` + `/abs` -> `//abs` == `/abs`), so the file lands exactly
+# where we asked. Both extract rules must do this; forgetting it on one silently
+# yields an empty output file. (params.out_abs = os.path.abspath of the output.)
+
+
 rule extract_sample_paths:
     """matUtils extract --sample-paths (root->tip node chain per sample; ~19 GB).
 
@@ -56,8 +69,10 @@ rule extract_sample_paths:
         tree=config["tree"],
     output:
         temp(SAMPLE_PATHS),
+    params:
+        out_abs=lambda w, output: os.path.abspath(output[0]),
     shell:
-        "python scripts/extract_paths.py --config {CONFIG} --kind sample --out {output}"
+        "{MATUTILS} extract -i {input.tree} -d / --sample-paths {params.out_abs}"
 
 
 rule extract_clade_paths:
@@ -66,8 +81,10 @@ rule extract_clade_paths:
         tree=config["tree"],
     output:
         CLADE_PATHS,
+    params:
+        out_abs=lambda w, output: os.path.abspath(output[0]),
     shell:
-        "python scripts/extract_paths.py --config {CONFIG} --kind clade --out {output}"
+        "{MATUTILS} extract -i {input.tree} -d / --clade-paths {params.out_abs}"
 
 
 rule resolve_representative:

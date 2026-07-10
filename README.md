@@ -32,7 +32,6 @@ s2-clade-mask/
 ├── Snakefile                       # staged pipeline
 ├── scripts/
 │   ├── s2clademask.py                   # shared library (all generation logic)
-│   ├── extract_paths.py                 # rule: one matUtils extract pass
 │   ├── resolve_nodes.py                 # rule: resolve clades in one anchoring mode
 │   ├── compare_and_build.py             # rule: emit both YAMLs + anchor cross-check table
 │   ├── check_anchors.py                 # rule: enforce max_anchor_distance

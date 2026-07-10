@@ -29,7 +29,6 @@ config.yaml                            # all run parameters (paths + options)
 environment.yml                        # conda env: usher (matUtils), snakemake, python, pyyaml, gh
 Snakefile                              # staged pipeline
 scripts/s2clademask.py                 # shared library: ALL generation logic lives here
-scripts/extract_paths.py               # rule: one matUtils extract pass (--sample-paths/--clade-paths)
 scripts/resolve_nodes.py               # rule: resolve clades in one anchoring mode
 scripts/compare_and_build.py           # rule: emit both YAMLs + the anchor cross-check table
 scripts/check_anchors.py               # rule: enforce max_anchor_distance (founder vs representative)
@@ -53,7 +52,8 @@ snakemake --cores 4                                        # staged, cached pipe
 ```
 
 The Snakemake pipeline runs: `extract_sample_paths` /
-`extract_clade_paths` (the two matUtils passes) → `resolve_founder` (Mode 2, MRCA)
+`extract_clade_paths` (the two matUtils passes, invoked directly in the rule
+shell) → `resolve_founder` (Mode 2, MRCA)
 + `resolve_representative` (Mode 1, string match — used only to cross-check) →
 `compare_and_build` (writes both YAMLs plus the anchor-distance
 table `anchoring_comparison.txt` / machine-readable `anchor_distances.yaml`) →
@@ -104,10 +104,12 @@ GISAID-only representatives) or a filtered per-run tree.
 ## Editing conventions
 
 - **All generation logic → `scripts/s2clademask.py`.** The rule scripts
-  (`extract_paths.py`, `resolve_nodes.py`, `compare_and_build.py`,
-  `check_anchors.py`, `check_recovery.py`) are thin entrypoints that import the
-  library; do not reimplement logic in them. Adding a Snakemake rule means adding a
-  thin script + a rule, not a second copy of an algorithm.
+  (`resolve_nodes.py`, `compare_and_build.py`, `check_anchors.py`,
+  `check_recovery.py`) are thin entrypoints that import the library; do not
+  reimplement logic in them. Adding a Snakemake rule means adding a thin script + a
+  rule, not a second copy of an algorithm. (The two `matUtils extract` passes are
+  the exception — they carry no generation logic, so their rules invoke `matUtils`
+  directly in the shell; see the `-d /` quirk note in the `Snakefile`.)
 - **All run inputs** — tree/metadata paths, both outputs, ranges, strict,
   `max_anchor_distance`, the pipeline intermediate/report paths, *and* the reviewed
   masking decisions (`representative_name_overrides` / `representative_absent_ok`) →

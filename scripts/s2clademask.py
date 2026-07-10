@@ -5,9 +5,9 @@ This module holds every piece of logic used to turn the UCSC PANGO-lineage-keyed
 ``branchSpecificMask.yml`` into the Nextstrain-clade-keyed ``usher_masked_sites.yaml``
 that ``mat-pcp`` consumes (and the companion PANGO-lineage-keyed
 ``usher_masked_sites_pango.yaml``). It is imported by the staged Snakemake pipeline
-(``Snakefile`` + the thin ``scripts/*.py`` rule entrypoints ``extract_paths.py`` /
-``resolve_nodes.py`` / ``compare_and_build.py`` / ``check_anchors.py`` /
-``check_recovery.py``).
+(``Snakefile`` + the thin ``scripts/*.py`` rule entrypoints ``resolve_nodes.py`` /
+``compare_and_build.py`` / ``check_anchors.py`` / ``check_recovery.py``). The two
+``matUtils extract`` passes are run directly by the Snakefile's extract rules.
 
 All the algorithm's write-up lives in ``README.md``; this module keeps the
 functions and the design invariants (founder-anchored resolution with a
@@ -18,7 +18,6 @@ never re-implement logic.
 
 import os
 import re
-import subprocess
 import gzip
 from collections import defaultdict
 
@@ -97,35 +96,11 @@ def parse_branch_spec(path):
 
 # ---------------------------------------------------------------------------
 # 2. Sample paths (root -> tip node IDs) from the MAT
+#
+# The two ``matUtils extract`` passes (--sample-paths / --clade-paths) are run
+# directly by the Snakefile's extract rules; see the note there about the ``-d /``
+# absolute-output-path quirk. This module only parses the TSVs they produce.
 # ---------------------------------------------------------------------------
-
-
-# matUtils extract writes its output relative to its ``-d`` directory (default
-# the CWD), prepending that directory even to an *absolute* ``--sample-paths`` /
-# ``--clade-paths`` path -- so a bare absolute path lands in a bogus nested
-# location (``$CWD/fh/.../out.tsv``) and the intended file is never written.
-# Passing ``-d /`` together with an absolute out path makes the prepend collapse
-# (``/`` + ``/abs`` -> ``//abs`` == ``/abs``), so the file lands exactly where we
-# asked. Both extract wrappers must do this; forgetting it on one silently yields
-# an empty output file.
-
-
-def run_sample_paths(tree, out_path, matutils="matUtils", log_file=None):
-    """Run ``matUtils extract --sample-paths`` on ``tree`` writing ``out_path``."""
-    out_abs = os.path.abspath(out_path)
-    cmd = [matutils, "extract", "-i", str(tree), "-d", "/", "--sample-paths", out_abs]
-    log(f"Running: {' '.join(cmd)}", log_file)
-    subprocess.run(cmd, check=True)
-    return out_abs
-
-
-def run_clade_paths(tree, out_path, matutils="matUtils", log_file=None):
-    """Run ``matUtils extract --clade-paths`` on ``tree`` writing ``out_path``."""
-    out_abs = os.path.abspath(out_path)
-    cmd = [matutils, "extract", "-i", str(tree), "-d", "/", "--clade-paths", out_abs]
-    log(f"Running: {' '.join(cmd)}", log_file)
-    subprocess.run(cmd, check=True)
-    return out_abs
 
 
 def parse_clade_paths(path):
