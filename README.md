@@ -253,8 +253,14 @@ For **Nextstrain** targets, rule (b) attributes a fine PANGO clade to the Nextst
 clade its samples *actually carry* — e.g. `KP.3.1.1` is coarsened to `24E`, not to
 its ancestor `24A`. For the **PANGO** output every clade is its own target, so rule
 (b) never coarsens; each clade just accumulates its ancestral spec clades' masks
-through rule (a). Clades with no founder node (non-monophyletic `recombinant`) are
-logged and left unmasked.
+through rule (a).
+
+Some *target* Nextstrain clades in the metadata have no founder node in the tree —
+recombinant or very recent lineages that aren't monophyletic, so `matUtils
+--clade-paths` gives them no MRCA (on the 2026-04-22 tree: `recombinant`,
+`25G (XFC)`, `25H (XFJ)`, `25D (MC.10.2.1)`, `25E (PY.1)`, `25F (NW.1.2)`,
+`25I (BA.3.2)`). These are logged and get no mask block. (Every *spec* clade in
+`branchSpecificMask.yml` must have a founder, or the run is a hard error — §3.)
 
 ### 6. Accumulate & emit (`build_clade_masks` → `write_output`)
 
