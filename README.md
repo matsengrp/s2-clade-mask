@@ -121,7 +121,7 @@ representatives match against.
 
 | Key | Meaning |
 |---|---|
-| `tree`, `metadata` | full gisaid-and-public MAT `.pb.gz` and its metadata (required unless `sample_paths` + `clade_paths` are precomputed) |
+| `tree`, `metadata` | full gisaid-and-public MAT `.pb.gz` and its metadata (both required) |
 | `branch_spec` | vendored UCSC spec (`data/branchSpecificMask.yml`) |
 | `output` | Nextstrain-clade YAML (`results/usher_masked_sites.yaml`) |
 | `output_pango` | PANGO-clade companion YAML (`results/usher_masked_sites_pango.yaml`) |
@@ -132,7 +132,6 @@ representatives match against.
 | `strict` | fail if old masks are not fully recovered |
 | `union_old` | force-include any unrecovered old masks |
 | `matutils`, `workdir` | binary name and scratch dir for the large paths files |
-| `sample_paths`, `clade_paths` | matUtils extract outputs (default `results/sample_paths.tsv` / `results/clade_paths.tsv`) |
 | `nodes_representative`, `nodes_founder` | founder / representative node-map intermediates (default `results/nodes_{founder,representative}.yaml`) |
 | `comparison_report` | human anchor-distance table (default `results/anchoring_comparison.txt`) |
 | `anchor_distances` | machine-readable anchor distances (default `results/anchor_distances.yaml`) |
@@ -153,7 +152,7 @@ version-controlled, those entries are reviewed exactly like code.
 `matUtils extract --sample-paths` on a tree this size (~17M samples) produces a large paths
 file (tens of GB); the generator reads it only until every anchor node's ancestor
 chain has been seen (early exit), so memory stays modest. Point `workdir` at a
-disk with room, or set `sample_paths` / `clade_paths` to skip `matUtils`.
+disk with room.
 
 > **Note — GISAID redistribution.** Outputs derived from a GISAID tree inherit
 > GISAID's redistribution terms. `usher_masked_sites.yaml` itself contains only

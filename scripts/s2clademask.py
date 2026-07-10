@@ -960,9 +960,6 @@ CONFIG_DEFAULTS = {
     "clade_column": "Nextstrain_clade",
     "site_include_start": 266,   # masks outside [start, end] (the UTRs) are dropped
     "site_include_end": 29674,
-    "sample_paths": None,        # precomputed matUtils --sample-paths (skips matUtils)
-    "clade_paths": None,         # precomputed matUtils --clade-paths (skips matUtils)
-    "tree": None,                # full MAT .pb(.gz); required unless both *_paths given
     "matutils": "matUtils",
     "workdir": "results",        # dir for the (large) temporary paths files
     "union_old": False,          # force-include any unrecovered old masks
@@ -986,7 +983,7 @@ CONFIG_DEFAULTS = {
     "representative_name_overrides": {},  # spec rep name -> exact tree name
     "representative_absent_ok": [],       # clades whose rep may be absent (skip check)
 }
-REQUIRED_CONFIG = ("branch_spec", "metadata", "output")
+REQUIRED_CONFIG = ("branch_spec", "metadata", "output", "tree")
 
 
 def load_config(path):

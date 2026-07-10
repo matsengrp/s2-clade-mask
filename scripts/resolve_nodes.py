@@ -50,9 +50,9 @@ def main(argv=None):
         os.makedirs(out_dir, exist_ok=True)
 
     if cli.mode == "representative":
-        sample_paths = cli.sample_paths or cfg["sample_paths"]
+        sample_paths = cli.sample_paths
         if not sample_paths:
-            raise ValueError("mode representative needs --sample-paths (or config 'sample_paths')")
+            raise ValueError("mode representative needs --sample-paths")
         lib.log("Mode 1 (representative / string match): resolving representative "
                 "sample nodes (for the founder cross-check)...", log_file)
         clade_to_node, via, unresolved = lib.resolve_representative_only(
@@ -73,9 +73,9 @@ def main(argv=None):
         meta = {"mode": "representative", "spec_version": version,
                 "source": os.path.abspath(sample_paths)}
     else:
-        clade_paths = cli.clade_paths or cfg["clade_paths"]
+        clade_paths = cli.clade_paths
         if not clade_paths:
-            raise ValueError("mode founder needs --clade-paths (or config 'clade_paths')")
+            raise ValueError("mode founder needs --clade-paths")
         clade_founders = lib.parse_clade_paths(clade_paths)
         lib.log(f"Parsed {len(clade_founders):,} clade annotations from {clade_paths}",
                 log_file)

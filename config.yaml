@@ -64,10 +64,9 @@ max_anchor_distance: 4
 matutils: matUtils   # binary name / path (from the `usher` conda package)
 workdir: results     # dir for the large temporary matUtils paths files
 
-# Optional keys with sensible defaults -- precomputed matUtils outputs
-# (sample_paths, clade_paths; the dev fast-path), the pipeline intermediate/report
-# paths, and a run-log path -- are documented in the README config-key table. Set
-# one here only to override its default.
+# Optional keys with sensible defaults -- the pipeline intermediate/report paths
+# and a run-log path -- are documented in the README config-key table. Set one
+# here only to override its default.
 
 # --- Human-approved resolution deviations -----------------------------------
 #

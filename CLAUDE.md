@@ -62,12 +62,10 @@ mutations from its representative) + `check_recovery` (old-scheme superset pass/
 `recovery_report.txt` **and** the per-clade added-mask summary table
 `recovery_summary.txt`, both regenerated each run). Each stage is cached, so
 troubleshooting doesn't re-pay for the ~1 h / ~19 GB `--sample-paths` extract.
-During development, set `sample_paths` / `clade_paths` in `config.yaml` to
-precomputed TSVs so the extract rules are skipped.
 
-All run parameters come from `config.yaml`. Both the pipeline and the wrapper run
-against the **full gisaid-and-public** MAT — never the public-only tree (missing
-several GISAID-only representatives) or a filtered per-run tree.
+All run parameters come from `config.yaml`. The pipeline always runs against the
+**full gisaid-and-public** MAT — never the public-only tree (missing several
+GISAID-only representatives) or a filtered per-run tree.
 
 ## Design invariants — do not break these
 

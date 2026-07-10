@@ -30,11 +30,7 @@ def main(argv=None):
 
     cfg = lib.load_config(cli.config)
     log_file = cfg["log"]
-    tree = cfg["tree"]
-    if not tree:
-        raise ValueError(
-            "config needs 'tree' to run matUtils extract (or supply a precomputed "
-            "sample_paths/clade_paths so this rule is skipped)")
+    tree = cfg["tree"]  # required by load_config
 
     out_dir = os.path.dirname(os.path.abspath(cli.out))
     if out_dir:

@@ -11,19 +11,14 @@
 #   snakemake -n                     # dry run (show the DAG)
 #
 # All run parameters come from config.yaml, read natively below. Run from the
-# repo root so the relative paths in config.yaml resolve. To skip the matUtils
-# passes during development, point `sample_paths` / `clade_paths` in config.yaml
-# at precomputed TSVs -- those files then satisfy the inputs and the extract
-# rules never fire.
+# repo root so the relative paths in config.yaml resolve. The two matUtils extract
+# passes always run against `config["tree"]` and produce the TSVs below.
 # =============================================================================
 
 configfile: "config.yaml"
 
-# Precomputed-paths handling: if config supplies a path, use it (the file
-# satisfies the input and the corresponding extract rule is not run); otherwise
-# produce it under results/.
-SAMPLE_PATHS = config.get("sample_paths") or "results/sample_paths.tsv"
-CLADE_PATHS  = config.get("clade_paths")  or "results/clade_paths.tsv"
+SAMPLE_PATHS = "results/sample_paths.tsv"
+CLADE_PATHS  = "results/clade_paths.tsv"
 
 NODES_REP     = config.get("nodes_representative", "results/nodes_representative.yaml")
 NODES_FOUNDER = config.get("nodes_founder", "results/nodes_founder.yaml")
@@ -54,7 +49,7 @@ rule all:
 rule extract_sample_paths:
     """matUtils extract --sample-paths (root->tip node chain per sample; ~19 GB)."""
     input:
-        tree=config["tree"] if config.get("tree") else [],
+        tree=config["tree"],
     output:
         SAMPLE_PATHS,
     shell:
@@ -64,7 +59,7 @@ rule extract_sample_paths:
 rule extract_clade_paths:
     """matUtils extract --clade-paths ({clade: founder node id})."""
     input:
-        tree=config["tree"] if config.get("tree") else [],
+        tree=config["tree"],
     output:
         CLADE_PATHS,
     shell:

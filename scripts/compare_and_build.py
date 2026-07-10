@@ -110,16 +110,16 @@ def main(argv=None):
 
     nodes_rep = cli.nodes_representative or cfg["nodes_representative"]
     nodes_founder = cli.nodes_founder or cfg["nodes_founder"]
-    sample_paths = cli.sample_paths or cfg["sample_paths"]
-    clade_paths = cli.clade_paths or cfg["clade_paths"]
+    sample_paths = cli.sample_paths
+    clade_paths = cli.clade_paths
     out_yaml = cli.out_yaml or cfg["output"]
     out_pango = cli.out_pango or cfg["output_pango"]
     out_comparison = cli.out_comparison or cfg["comparison_report"]
     out_distances = cli.out_distances or cfg["anchor_distances"]
     if not sample_paths:
-        raise ValueError("need --sample-paths (or config 'sample_paths')")
+        raise ValueError("need --sample-paths")
     if not clade_paths:
-        raise ValueError("need --clade-paths (or config 'clade_paths')")
+        raise ValueError("need --clade-paths")
 
     for path in (out_yaml, out_pango, out_comparison, out_distances):
         d = os.path.dirname(os.path.abspath(path))
