@@ -1,0 +1,92 @@
+# =============================================================================
+# s2-clade-mask configuration
+#
+# All run parameters for the pipeline live here. Run Snakemake from the repo root
+# so the relative paths below resolve:
+#
+#   snakemake --cores 4
+#
+# The human-approved representative name-overrides and fallbacks are configured
+# at the bottom of this file. Because this config is under version control, those
+# entries are reviewed exactly like code.
+# =============================================================================
+
+# --- Inputs -----------------------------------------------------------------
+
+# Full gisaid-and-public MAT (.pb.gz) and its metadata. Use the GISAID-named
+# files: their sample names are what the spec representatives match against.
+# Do NOT use a public-only tree (missing several GISAID-only representatives)
+# or a filtered per-run tree (all clades must be present / annotated).
+tree: /fh/fast/matsen_e/shared/viral-dasm/mat-trees/2026-04-22-gisaid-and-public/gisaidAndPublic.2026-04-22.masked.gisaidNames.pb.gz
+metadata: /fh/fast/matsen_e/shared/viral-dasm/mat-trees/2026-04-22-gisaid-and-public/gisaidAndPublic.2026-04-22.gisaidNames.metadata.tsv.gz
+
+# Vendored UCSC PANGO-lineage-keyed masking spec (input).
+branch_spec: data/branchSpecificMask.yml
+
+# --- Output -----------------------------------------------------------------
+
+# Two masking YAMLs are written, both founder-anchored:
+#   output       -> Nextstrain-clade keyed (consumed by mat-pcp)
+#   output_pango -> PANGO-lineage keyed companion (each clade accumulates its
+#                   ancestral PANGO clades' masks; no Nextstrain coarsening)
+output: results/usher_masked_sites.yaml
+output_pango: results/usher_masked_sites_pango.yaml
+
+# --- Old-scheme recovery check (optional) -----------------------------------
+
+# Reference masking file the output must remain a superset of, within the
+# site_include_range: the original hand-made scheme from jbloomlab/SARS2-mut-fitness
+# (vendored below; see its provenance header). This is a fixed historical
+# baseline, not the previous run's output -- always check against it, not
+# results/usher_masked_sites.yaml. Leave unset to skip the check.
+old_yaml: data/usher_masked_sites_old_scheme.yml
+
+# --- Parameters -------------------------------------------------------------
+
+clade_column: Nextstrain_clade
+
+# Masks outside [start, end] (the 5'/3' UTRs) are dropped -- the mat-pcp range
+# filter discards those positions at runtime regardless.
+site_include_start: 266
+site_include_end: 29674
+
+strict: true       # fail (nonzero exit) if old masks are not fully recovered
+
+# Anchor cross-check: each clade is founder-anchored; fail if a clade's founder
+# node sits more than this many mutations (patristic) from its representative
+# node. 4 is the current empirical maximum (BA.2.75); keep it as tight as the data
+# allows so a genuinely mis-resolved anchor is caught.
+max_anchor_distance: 4
+
+# --- Execution --------------------------------------------------------------
+
+matutils: matUtils   # binary name / path (from the `usher` conda package)
+
+# Optional keys with sensible defaults -- the pipeline intermediate/report paths
+# and a run-log path -- are documented in the README config-key table. Set one
+# here only to override its default.
+
+# --- Human-approved resolution deviations -----------------------------------
+#
+# Each clade is anchored at its annotated founder (MRCA) node. The representative
+# sample is resolved only to cross-check that anchor (max_anchor_distance, above).
+# Representatives are matched to the tree by EXACT equality on the sample name
+# before the first '|' -- never a fuzzy/substring match. The two tables below are
+# the ONLY sanctioned deviations; add an entry only after confirming the sample by
+# hand in the tree, and note the clade + reason. Revisit when the spec/tree change.
+
+# Spec representative name -> exact tree sample name (field before '|').
+# These differ from the spec only by country abbreviation in the 2026-04-22 tree.
+representative_name_overrides:
+  IND/GBRC714b/2021: India/GJ-GBRC714b/2021                 # clade B.1.617.2
+  BGD/icddrb_TND_06_1053/2022: Bangladesh/icddrb_TND_06_1053/2022  # clade XBB
+
+# Clades whose representative sample is genuinely absent from the tree. Founder
+# anchoring still applies (the founder must be present); the founder-vs-rep
+# cross-check is simply skipped for these. An absent representative NOT listed here
+# is a hard error.
+representative_absent_ok:
+  # FRA/IHUCOVID-005193-N1/2021 is not in the 2026-04-22 gisaid-and-public MAT.
+  # P.1 is founder-anchored at its 20J (Gamma) MRCA; its only mask (deletion
+  # [11288, 11296]) is also masked via B.1.1.7 and B.1.351.
+  - P.1

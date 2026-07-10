@@ -1,0 +1,160 @@
+# CLAUDE.md
+
+Guidance for Claude Code (claude.ai/code) and other contributors working in this
+repository.
+
+## Project overview
+
+`s2-clade-mask` is a **standalone, single-purpose** repository. Its job is to
+generate `results/usher_masked_sites.yaml` — the per-**Nextstrain-clade**
+site/mutation masking file consumed by the
+[`mat-pcp`](https://github.com/matsengrp/mat-pcp) SARS-CoV-2 pipeline — from the
+UCSC PANGO-lineage-keyed branch-specific masking spec
+(`data/branchSpecificMask.yml`). It also emits a companion per-**PANGO-lineage**
+file, `results/usher_masked_sites_pango.yaml` (same masks, keyed by PANGO clade
+instead of coarsened to Nextstrain clades).
+
+When the masks are refreshed here, the resulting YAML is **copied into `mat-pcp`**
+at `data/usher_masked_sites.yaml`. That copy is the only thing `mat-pcp` needs
+from this repo; generation (which needs the full ~17M-sample MAT + `matUtils`) is
+fully decoupled from application.
+
+Read `README.md` for the full algorithm write-up; this file covers how to work in
+the repo without re-deriving that.
+
+## Layout
+
+```
+config.yaml                            # all run parameters (paths + options)
+environment.yml                        # conda env: usher (matUtils), snakemake, python, pyyaml, gh
+Snakefile                              # staged pipeline
+scripts/s2clademask.py                 # shared helpers used by >1 rule (IO, parsers, node-map schema, config)
+scripts/resolve_nodes.py               # rule: representative/founder resolution (+ its logic)
+scripts/compare_and_build.py           # rule: over-mask assignment, anchor cross-check, YAML emission
+scripts/check_anchors.py               # rule: enforce max_anchor_distance (founder vs representative)
+scripts/check_recovery.py              # rule: old-scheme superset recovery (+ added-mask summary)
+data/branchSpecificMask.yml            # vendored UCSC input spec (pinned commit)
+data/usher_masked_sites_old_scheme.yml # vendored jbloomlab old-scheme baseline (pinned commit)
+results/usher_masked_sites.yaml        # generated Nextstrain-clade output (tracked)
+results/usher_masked_sites_pango.yaml  # generated PANGO-clade output (tracked)
+```
+
+`scripts/s2clademask.py` holds only what **more than one** rule needs (IO helpers,
+the two input parsers, override validation, the node-map artifact schema, config
+loading). Logic used by a single rule lives in that rule's script — resolution in
+`resolve_nodes.py`, the over-mask/cross-check/emit core in `compare_and_build.py`,
+recovery in `check_recovery.py`. Don't duplicate a helper across scripts: if a
+second rule starts needing it, promote it to `s2clademask.py`.
+
+## Running
+
+```bash
+conda env create -f environment.yml
+conda activate s2-clade-mask
+# from the repo root, so relative paths in config.yaml resolve:
+snakemake --cores 4                                        # staged, cached pipeline
+```
+
+The Snakemake pipeline runs: `extract_sample_paths` /
+`extract_clade_paths` (the two matUtils passes, invoked directly in the rule
+shell) → `resolve_founder` (Mode 2, MRCA)
++ `resolve_representative` (Mode 1, string match — used only to cross-check) →
+`compare_and_build` (writes both YAMLs plus the anchor-distance
+table `anchoring_comparison.txt` / machine-readable `anchor_distances.yaml`) →
+`check_anchors` (fails if a founder anchor is more than `max_anchor_distance`
+mutations from its representative) + `check_recovery` (old-scheme superset pass/fail
+`recovery_report.txt` **and** the per-clade added-mask summary table
+`recovery_summary.txt`, both regenerated each run). Each stage's output is cached
+and re-runs only when its inputs change — except the ~19 GB `sample_paths.tsv`, a
+`temp` output deleted once `compare_and_build` has read it, so re-running a later
+stage re-triggers the ~1 h `--sample-paths` extract unless you pass
+`snakemake --notemp` (keep intermediates while developing).
+
+All run parameters come from `config.yaml`. The pipeline always runs against the
+**full gisaid-and-public** MAT — never the public-only tree (missing several
+GISAID-only representatives) or a filtered per-run tree.
+
+## Design invariants — do not break these
+
+1. **Founder-anchored resolution, representative cross-check.** Each PANGO clade is
+   anchored at its annotated **founder (MRCA) node** — always present in a full
+   gisaid-and-public MAT; a missing founder is a **hard error**. The representative
+   sample is resolved only to *verify* the founder: the pipeline **asserts** the
+   founder and representative anchors are within `max_anchor_distance` mutations
+   (patristic) of each other. We never fall back to the representative for
+   resolution. The cross-check keeps the deliberate divergence from upstream
+   `matUtils mask`'s node choice provably tiny.
+2. **Exact matching only.** The representative (used for the cross-check) matches
+   the tree sample name by exact equality on the field **before the first `|`**.
+   Never add fuzzy/substring matching. A representative that is absent and not
+   listed in `representative_absent_ok` is a **hard error**, never a silent guess.
+3. **Every deviation is human-approved.** The `representative_name_overrides`
+   (renamed samples) and `representative_absent_ok` (representatives genuinely
+   absent from the tree — cross-check skipped, founder anchoring still applies)
+   tables live in `config.yaml` and are validated at load time. The config is
+   version-controlled, so entries are reviewed exactly like code. Add an entry —
+   with a comment naming the clade and why — only after confirming the sample by
+   hand; never add fuzzy matching to avoid one. Raise `max_anchor_distance` only
+   after confirming by hand that the anchors really are close.
+4. **Superset recovery.** The output must remain a superset of the old hand-made
+   scheme within `site_include_range` (checked via `old_yaml` + `strict`). `old_yaml`
+   always points at the vendored `data/usher_masked_sites_old_scheme.yml` — the
+   original jbloomlab/SARS2-mut-fitness file, pinned at a fixed commit — never at a
+   previous run's `results/usher_masked_sites.yaml`. A true shortfall is a bug to
+   investigate, not to accept.
+5. **UTR masks dropped.** Masks outside `[site_include_start, site_include_end]`
+   are omitted (mat-pcp discards those positions at runtime anyway).
+
+## Editing conventions
+
+- **Logic goes where it is used; shared helpers go in `scripts/s2clademask.py`.**
+  Logic a single rule uses lives in that rule's script (resolution in
+  `resolve_nodes.py`; the over-mask assignment, anchor cross-check, and YAML
+  emission in `compare_and_build.py`; old-scheme recovery in `check_recovery.py`).
+  `s2clademask.py` holds only what **two or more** scripts share (IO helpers, the
+  spec/clade-paths parsers, override validation, the node-map artifact schema,
+  config loading). Don't copy a helper between scripts — if a second rule needs it,
+  move it into `s2clademask.py`. Adding a Snakemake rule means adding a script + a
+  rule. (The two `matUtils extract` passes carry no such logic, so their rules
+  invoke `matUtils` directly in the shell; see the `-d /` quirk note in the
+  `Snakefile`.)
+- **All run inputs** — tree/metadata paths, both outputs, ranges, strict,
+  `max_anchor_distance`, the pipeline intermediate/report paths, *and* the reviewed
+  masking decisions (`representative_name_overrides` / `representative_absent_ok`) →
+  `config.yaml`. Keep the schema in `CONFIG_DEFAULTS` / `REQUIRED_CONFIG` (in
+  `s2clademask.py`) and the `validate_resolution_overrides` checks in sync with
+  `config.yaml` and the README key table.
+- **Never hand-edit** `results/usher_masked_sites.yaml` (regenerate it),
+  `data/branchSpecificMask.yml`, or `data/usher_masked_sites_old_scheme.yml`
+  (re-vendor them — see below).
+- Keep `README.md` and this file **in sync** with any change to layout, the config
+  schema, the resolution logic, the pipeline/rule structure, or the run procedure.
+
+## Updating the vendored spec
+
+Re-download `branchSpecificMask.yml` from the UCSC kent repo
+(`src/hg/utils/otto/sarscov2phylo/branchSpecificMask.yml`) at a newer commit,
+update the provenance block at the top of `data/branchSpecificMask.yml`, then
+regenerate. If a representative was renamed or dropped upstream, the run fails
+loudly — either the founder cross-check (`check_anchors`) reports it, or
+`resolve_representative` errors on an unlisted absent representative. Confirm the
+sample by hand in the tree and add an approved `representative_name_overrides`
+(renamed) or `representative_absent_ok` (genuinely absent) entry to `config.yaml`.
+A new clade with no annotated founder is a hard error in `resolve_founder`. After
+regenerating, re-measure the count tables in the README.
+
+`data/usher_masked_sites_old_scheme.yml` (the `old_yaml` baseline) is a fixed
+historical reference, not something to refresh routinely — it should only ever
+change if the acceptance criterion itself is revisited (e.g. a different upstream
+commit is agreed to be the authoritative baseline). If that happens, re-download
+from the URL in its provenance header and update the block the same way.
+
+## Sanity checks
+
+- `python scripts/compare_and_build.py --help` (rule-script imports resolve);
+  `snakemake -n` shows the expected DAG.
+- `load_config` rejects unknown keys and missing required keys.
+- A full run exits 0 only if: every clade has a founder node, every founder anchor
+  is within `max_anchor_distance` of its representative (or the representative is in
+  `representative_absent_ok`), and (with `strict: true`) old-scheme recovery on the
+  Nextstrain output is clean.

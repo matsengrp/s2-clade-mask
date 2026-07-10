@@ -1,0 +1,33 @@
+# Large input trees / metadata (download separately; never commit)
+*.pb
+*.pb.gz
+*.metadata.tsv.gz
+*.taxonium.jsonl.gz
+
+# Intermediate matUtils extract outputs (land in results/)
+sample_paths*.tsv
+clade_paths*.tsv
+*.log
+
+# Staged-pipeline intermediates / diagnostic reports (regenerated each run)
+nodes_*.yaml
+anchor_distances.yaml
+anchor_check.txt
+*_comparison.txt
+*_report.txt
+*_summary.txt
+.snakemake/
+
+# results/ holds the generated outputs, which ARE tracked; the large temporary
+# paths files and intermediates above are ignored by pattern wherever they land.
+!results/usher_masked_sites.yaml
+!results/usher_masked_sites_pango.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Editor / OS
+.DS_Store
+*.swp
