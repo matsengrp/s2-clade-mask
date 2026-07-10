@@ -10,7 +10,7 @@ that ``mat-pcp`` consumes (and the companion PANGO-lineage-keyed
 ``check_recovery.py``).
 
 All the algorithm's write-up lives in ``README.md``; this module keeps the
-functions and the design invariants (founder-primary resolution with a
+functions and the design invariants (founder-anchored resolution with a
 representative cross-check, exact matching only, human-approved deviations,
 superset recovery, UTR drop) in one place so the pipeline scripts stay thin and
 never re-implement logic.
@@ -255,7 +255,7 @@ def resolve_representative_only(spec, sample_paths_file, name_overrides,
 
     Steps 1-2 of the resolution policy, with **no** founder/sample fallback:
 
-    1. **Representative sample (primary).** Resolve ``spec[clade]["representative"]``
+    1. **Representative sample.** Resolve ``spec[clade]["representative"]``
        from the sample-paths file, matching the name *exactly* before the first
        ``|`` (upstream ``branchSpecificMask.py`` logic, respecting
        ``representativeBacktrack``). This anchors the mask at the same node
@@ -299,13 +299,12 @@ def resolve_representative_only(spec, sample_paths_file, name_overrides,
 
 
 def resolve_founder_or_fail(spec, clade_founders, log_file=None):
-    """Founder-primary anchor for every PANGO clade; hard error if any is missing.
+    """Founder anchor for every PANGO clade; hard error if any is missing.
 
     Returns ``clade_to_node`` mapping each spec clade to its annotated founder
     (MRCA) node. A clade with no annotated founder in the tree is a hard error
-    (design invariant #1: the founder is the primary anchor and must be present --
-    run against the full gisaid-and-public MAT, where every spec clade is
-    annotated).
+    (design invariant #1: the founder is the anchor and must be present -- run
+    against the full gisaid-and-public MAT, where every spec clade is annotated).
     """
     founder_node, no_founder = resolve_founder_nodes(spec, clade_founders)
     if no_founder:

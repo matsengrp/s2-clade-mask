@@ -80,8 +80,8 @@ def main(argv=None):
         lib.log(f"Parsed {len(clade_founders):,} clade annotations from {clade_paths}",
                 log_file)
         lib.log("Mode 2 (founder / MRCA): resolving annotated founder nodes "
-                "(the primary anchor)...", log_file)
-        # Founder is the primary anchor: it must exist for every clade.
+                "(each clade's anchor)...", log_file)
+        # The founder is the anchor: it must exist for every clade.
         clade_to_node = lib.resolve_founder_or_fail(spec, clade_founders, log_file)
         via = {c: "founder" for c in clade_to_node}
         unresolved = []

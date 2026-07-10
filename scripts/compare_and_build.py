@@ -135,7 +135,7 @@ def main(argv=None):
         cfg["metadata"], cfg["clade_column"], log_file)
     start, end = cfg["site_include_start"], cfg["site_include_end"]
 
-    # Founder anchoring is primary: every clade must have a founder node.
+    # The output is founder-anchored: every clade must have a founder node.
     founder_node, _, no_founder = lib.read_nodes(nodes_founder)
     if no_founder:
         raise ValueError(

@@ -29,7 +29,7 @@ s2-clade-mask/
 ├── CLAUDE.md                       # guidance for Claude Code / contributors
 ├── config.yaml                     # all run parameters (paths, options)
 ├── environment.yml                 # conda env (usher/matUtils, snakemake, python, pyyaml, gh)
-├── Snakefile                       # staged pipeline (primary run path)
+├── Snakefile                       # staged pipeline
 ├── scripts/
 │   ├── s2clademask.py                   # shared library (all generation logic)
 │   ├── extract_paths.py                 # rule: one matUtils extract pass
@@ -134,7 +134,9 @@ version-controlled, those entries are reviewed exactly like code.
 file (tens of GB); the generator reads it only until every anchor node's ancestor
 chain has been seen (early exit), so memory stays modest. Point `workdir` at a
 disk with room — the file is a Snakemake `temp` output, deleted automatically once
-the masks are built, so it is not left behind after the run.
+the masks are built, so it is not left behind after the run. When actively
+developing, pass `snakemake --notemp` to keep it (and the other intermediates) so
+re-running a later stage doesn't re-trigger the ~1 h `--sample-paths` extract.
 
 > **Note — GISAID redistribution.** Outputs derived from a GISAID tree inherit
 > GISAID's redistribution terms. `usher_masked_sites.yaml` itself contains only
@@ -171,8 +173,8 @@ Two `matUtils extract` passes on the full `.pb.gz`:
 
 - `--clade-paths` → `{clade: founder_node_id}` — the founder (MRCA) node of
   *every* annotated clade, both PANGO (`BA.4`) and Nextstrain (`"22A (BA.4)"`)
-  (`parse_clade_paths`). PANGO founders are the **primary** anchor for each mask
-  (§3); Nextstrain founders anchor the Nextstrain side of the over-mask rule (§5).
+  (`parse_clade_paths`). PANGO founders anchor each mask (§3); Nextstrain founders
+  anchor the Nextstrain side of the over-mask rule (§5).
 - `--sample-paths` → each sample's root → tip node chain. Read to resolve each
   clade's *representative sample* node (`resolve_representative_nodes`) for the
   founder cross-check (§3), and to obtain each anchor node's ancestor chain (§5).
@@ -186,8 +188,7 @@ output: it is deleted automatically once the last rule that reads it
 
 Each PANGO clade is anchored at its annotated **founder (MRCA) node** (from
 `--clade-paths`). In a full gisaid-and-public MAT every spec clade is annotated, so
-a **missing founder is a hard error**. The founder is the stable anchor; we do
-**not** fall back to the representative.
+a **missing founder is a hard error**.
 
 The clade's **representative sample** is resolved (from `--sample-paths`, exact
 upstream `branchSpecificMask.py` logic: last path node, back up past the sample's
@@ -196,15 +197,7 @@ The pipeline asserts that the founder and representative anchors are within
 `max_anchor_distance` **mutations** of each other (patristic distance through their
 common ancestor); a violation is a hard error (rule `check_anchors`). This keeps
 the deliberate divergence from upstream `matUtils mask`'s representative-node choice
-provably tiny while gaining the founder's stability.
-
-> **Why founder-primary?** The representative and founder are almost always within
-> a few mutations (empirical max **4**, on the 2026-04-22 tree). But a representative
-> can sit *just across* a Nextstrain-clade boundary from the founder — e.g. `BA.2.75`,
-> whose representative attaches to the `21L` (BA.2) stem one step above the `22D`
-> (BA.2.75) crown, over-broadening its coarsened mask onto all of `21L`. Anchoring
-> at the founder avoids that; the cross-check catches any case where the two are
-> *not* close, which would signal a genuinely mis-resolved anchor.
+provably tiny.
 
 Representative resolution is deliberately **explicit and auditable** — a person
 signs off on every deviation:

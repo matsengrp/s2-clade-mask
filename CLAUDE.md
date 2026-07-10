@@ -27,7 +27,7 @@ the repo without re-deriving that.
 ```
 config.yaml                            # all run parameters (paths + options)
 environment.yml                        # conda env: usher (matUtils), snakemake, python, pyyaml, gh
-Snakefile                              # staged pipeline (primary run path)
+Snakefile                              # staged pipeline
 scripts/s2clademask.py                 # shared library: ALL generation logic lives here
 scripts/extract_paths.py               # rule: one matUtils extract pass (--sample-paths/--clade-paths)
 scripts/resolve_nodes.py               # rule: resolve clades in one anchoring mode
@@ -52,10 +52,10 @@ conda activate s2-clade-mask
 snakemake --cores 4                                        # staged, cached pipeline
 ```
 
-The Snakemake pipeline is the primary path: `extract_sample_paths` /
-`extract_clade_paths` (the two matUtils passes) → `resolve_founder` (Mode 2, MRCA —
-the **primary** anchor) + `resolve_representative` (Mode 1, string match — used only
-to cross-check) → `compare_and_build` (writes both YAMLs plus the anchor-distance
+The Snakemake pipeline runs: `extract_sample_paths` /
+`extract_clade_paths` (the two matUtils passes) → `resolve_founder` (Mode 2, MRCA)
++ `resolve_representative` (Mode 1, string match — used only to cross-check) →
+`compare_and_build` (writes both YAMLs plus the anchor-distance
 table `anchoring_comparison.txt` / machine-readable `anchor_distances.yaml`) →
 `check_anchors` (fails if a founder anchor is more than `max_anchor_distance`
 mutations from its representative) + `check_recovery` (old-scheme superset pass/fail
@@ -69,7 +69,7 @@ GISAID-only representatives) or a filtered per-run tree.
 
 ## Design invariants — do not break these
 
-1. **Founder-primary resolution, representative cross-check.** Each PANGO clade is
+1. **Founder-anchored resolution, representative cross-check.** Each PANGO clade is
    anchored at its annotated **founder (MRCA) node** — always present in a full
    gisaid-and-public MAT; a missing founder is a **hard error**. The representative
    sample is resolved only to *verify* the founder: the pipeline **asserts** the
