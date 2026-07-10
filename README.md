@@ -142,6 +142,12 @@ disk with room.
 
 ## How the Snakemake pipeline works
 
+In brief: the pipeline reads the PANGO-lineage masking spec, resolves each clade to
+its founder node in the UShER tree, accumulates each clade's own masks together with
+those it inherits down the tree topology, and writes the explicit per-clade
+site/mutation lists — cross-checking the founder anchors and verifying old-scheme
+recovery along the way.
+
 The numbered stages below detail the generation logic; where a stage corresponds to
 one or more rules, the rule name(s) and the `results/…` file(s) they write are noted
 inline.
@@ -158,7 +164,7 @@ should be *un-masked* at that site (e.g. `BA.2.86` masks site 23599, but its
 per-sub-lineage carve-outs can't be expressed at clade granularity, so they are
 dropped and logged in §6, leaving the site masked clade-wide.
 
-### 2. Get node IDs from the tree
+### 2. Extract clade and sample paths from the tree
 
 Two `matUtils extract` passes on the full `.pb.gz`:
 
