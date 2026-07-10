@@ -158,12 +158,6 @@ should be *un-masked* at that site (e.g. `BA.2.86` masks site 23599, but its
 per-sub-lineage carve-outs can't be expressed at clade granularity, so they are
 dropped and logged in §6, leaving the site masked clade-wide.
 
-The spec is a single mapping of a top-level `version` key plus one entry per clade,
-so the parser removes `version` first (leaving every other top-level key to be read
-as a clade) and errors if it is missing — a cheap check that the upstream file still
-has that shape. The `version` value itself is only logged, not compared against an
-expected number.
-
 ### 2. Get node IDs from the tree
 
 Two `matUtils extract` passes on the full `.pb.gz`:
