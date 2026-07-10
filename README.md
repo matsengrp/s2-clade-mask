@@ -109,15 +109,6 @@ Rule DAG (`results/…` outputs in parentheses):
    superset check on the Nextstrain output (pass/fail), plus the per-clade
    added-mask summary table; under `strict: true` a true shortfall fails the run.
 
-To skip the ~1 h matUtils passes during development, add the precomputed TSVs to
-`config.yaml` — those files then satisfy the extract rules' inputs, so the rules
-never fire (the fast dev path, reusing the ~19 GB `sample_paths`):
-
-```yaml
-sample_paths: results/sample_paths.tsv
-clade_paths: results/clade_paths.tsv
-```
-
 Use the **full gisaid-and-public** MAT — not the public-only tree (it is missing
 several GISAID-only representatives) and not a filtered per-run tree (all clades
 must be present / annotated). At the Hutch a recent tree lives at
@@ -141,7 +132,7 @@ representatives match against.
 | `strict` | fail if old masks are not fully recovered |
 | `union_old` | force-include any unrecovered old masks |
 | `matutils`, `workdir` | binary name and scratch dir for the large paths files |
-| `sample_paths`, `clade_paths` | precomputed matUtils outputs; set them to skip the extract passes (the dev fast-path). Default unset (the extract rules produce `results/sample_paths.tsv` / `results/clade_paths.tsv`) |
+| `sample_paths`, `clade_paths` | matUtils extract outputs (default `results/sample_paths.tsv` / `results/clade_paths.tsv`) |
 | `nodes_representative`, `nodes_founder` | founder / representative node-map intermediates (default `results/nodes_{founder,representative}.yaml`) |
 | `comparison_report` | human anchor-distance table (default `results/anchoring_comparison.txt`) |
 | `anchor_distances` | machine-readable anchor distances (default `results/anchor_distances.yaml`) |
@@ -149,11 +140,11 @@ representatives match against.
 | `recovery_report` | old-scheme recovery pass/fail (default `results/recovery_report.txt`) |
 | `recovery_summary` | per-clade added-mask table (default `results/recovery_summary.txt`) |
 | `log` | optional run-log file (default unset) |
+| `representative_name_overrides` | spec rep name → exact tree name, for reviewed renames (see §3) |
+| `representative_absent_ok` | clades whose representative is genuinely absent from the tree (cross-check skipped; founder anchoring still applies — see §3) |
 
 All the intermediate/report paths above default under `results/`, are gitignored,
 and are regenerated on every run; set one only to relocate that artifact.
-| `representative_name_overrides` | spec rep name → exact tree name, for reviewed renames (see §3) |
-| `representative_absent_ok` | clades whose representative is genuinely absent from the tree (cross-check skipped; founder anchoring still applies — see §3) |
 
 The `config.yaml` also carries the human-approved `representative_name_overrides`
 / `representative_absent_ok` tables (see §3). Because the config is
