@@ -31,9 +31,9 @@ s2-clade-mask/
 ├── environment.yml                 # conda env (usher/matUtils, snakemake, python, pyyaml, gh)
 ├── Snakefile                       # staged pipeline
 ├── scripts/
-│   ├── s2clademask.py                   # shared library (all generation logic)
-│   ├── resolve_nodes.py                 # rule: resolve clades in one anchoring mode
-│   ├── compare_and_build.py             # rule: emit both YAMLs + anchor cross-check table
+│   ├── s2clademask.py                   # shared helpers (IO, parsers, node-map schema, config)
+│   ├── resolve_nodes.py                 # rule: representative/founder resolution
+│   ├── compare_and_build.py             # rule: over-mask assignment, anchor cross-check, emit both YAMLs
 │   ├── check_anchors.py                 # rule: enforce max_anchor_distance
 │   └── check_recovery.py                # rule: superset recovery vs old scheme
 ├── data/

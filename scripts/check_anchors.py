@@ -16,6 +16,8 @@ import argparse
 import os
 import sys
 
+import yaml
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import s2clademask as lib
 
@@ -37,19 +39,22 @@ def main(argv=None):
     out_dir = os.path.dirname(os.path.abspath(out_report))
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
-    open(out_report, "w").close()
+    open(out_report, "w").close()  # truncate; lib.log appends line by line below
 
+    # The per-clade distance table produced by compare_and_build.
     with lib.open_maybe_gzip(distances_path) as f:
-        import yaml
         distances = yaml.safe_load(f) or {}
 
     lib.log(f"ANCHOR CHECK: max_anchor_distance = {max_dist} mutations (patristic); "
             f"{len(distances)} clade(s)", out_report)
 
+    # Collect every violation and report them together, rather than failing on the
+    # first, so one run surfaces all anchors that need attention.
     failures = []
     for clade in sorted(distances):
         d = distances[clade]
         if d.get("rep_absent"):
+            # An absent representative is only OK if the maintainer pre-approved it.
             if clade not in absent_ok:
                 failures.append(f"{clade}: representative ABSENT from tree and not in "
                                 "representative_absent_ok")

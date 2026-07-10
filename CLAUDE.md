@@ -28,19 +28,23 @@ the repo without re-deriving that.
 config.yaml                            # all run parameters (paths + options)
 environment.yml                        # conda env: usher (matUtils), snakemake, python, pyyaml, gh
 Snakefile                              # staged pipeline
-scripts/s2clademask.py                 # shared library: ALL generation logic lives here
-scripts/resolve_nodes.py               # rule: resolve clades in one anchoring mode
-scripts/compare_and_build.py           # rule: emit both YAMLs + the anchor cross-check table
+scripts/s2clademask.py                 # shared helpers used by >1 rule (IO, parsers, node-map schema, config)
+scripts/resolve_nodes.py               # rule: representative/founder resolution (+ its logic)
+scripts/compare_and_build.py           # rule: over-mask assignment, anchor cross-check, YAML emission
 scripts/check_anchors.py               # rule: enforce max_anchor_distance (founder vs representative)
-scripts/check_recovery.py              # rule: old-scheme superset recovery check
+scripts/check_recovery.py              # rule: old-scheme superset recovery (+ added-mask summary)
 data/branchSpecificMask.yml            # vendored UCSC input spec (pinned commit)
 data/usher_masked_sites_old_scheme.yml # vendored jbloomlab old-scheme baseline (pinned commit)
 results/usher_masked_sites.yaml        # generated Nextstrain-clade output (tracked)
 results/usher_masked_sites_pango.yaml  # generated PANGO-clade output (tracked)
 ```
 
-The generation logic lives in **one place** — `scripts/s2clademask.py`. The
-Snakemake rule scripts import it; **never** duplicate logic into a rule script.
+`scripts/s2clademask.py` holds only what **more than one** rule needs (IO helpers,
+the two input parsers, override validation, the node-map artifact schema, config
+loading). Logic used by a single rule lives in that rule's script — resolution in
+`resolve_nodes.py`, the over-mask/cross-check/emit core in `compare_and_build.py`,
+recovery in `check_recovery.py`. Don't duplicate a helper across scripts: if a
+second rule starts needing it, promote it to `s2clademask.py`.
 
 ## Running
 
@@ -103,13 +107,17 @@ GISAID-only representatives) or a filtered per-run tree.
 
 ## Editing conventions
 
-- **All generation logic → `scripts/s2clademask.py`.** The rule scripts
-  (`resolve_nodes.py`, `compare_and_build.py`, `check_anchors.py`,
-  `check_recovery.py`) are thin entrypoints that import the library; do not
-  reimplement logic in them. Adding a Snakemake rule means adding a thin script + a
-  rule, not a second copy of an algorithm. (The two `matUtils extract` passes are
-  the exception — they carry no generation logic, so their rules invoke `matUtils`
-  directly in the shell; see the `-d /` quirk note in the `Snakefile`.)
+- **Logic goes where it is used; shared helpers go in `scripts/s2clademask.py`.**
+  Logic a single rule uses lives in that rule's script (resolution in
+  `resolve_nodes.py`; the over-mask assignment, anchor cross-check, and YAML
+  emission in `compare_and_build.py`; old-scheme recovery in `check_recovery.py`).
+  `s2clademask.py` holds only what **two or more** scripts share (IO helpers, the
+  spec/clade-paths parsers, override validation, the node-map artifact schema,
+  config loading). Don't copy a helper between scripts — if a second rule needs it,
+  move it into `s2clademask.py`. Adding a Snakemake rule means adding a script + a
+  rule. (The two `matUtils extract` passes carry no such logic, so their rules
+  invoke `matUtils` directly in the shell; see the `-d /` quirk note in the
+  `Snakefile`.)
 - **All run inputs** — tree/metadata paths, both outputs, ranges, strict,
   `max_anchor_distance`, the pipeline intermediate/report paths, *and* the reviewed
   masking decisions (`representative_name_overrides` / `representative_absent_ok`) →
