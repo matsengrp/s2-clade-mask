@@ -142,25 +142,10 @@ disk with room.
 
 ## How the Snakemake pipeline works
 
-The pipeline runs as a DAG of cached rules (`results/…` outputs in parentheses):
-
-1. `extract_sample_paths` (`sample_paths.tsv`) and `extract_clade_paths`
-   (`clade_paths.tsv`) — the two `matUtils extract` passes.
-2. `resolve_founder` (`nodes_founder.yaml`) — **Mode 2**, each clade anchored at
-   its annotated founder (MRCA) node. This is the **primary** anchor (§3).
-3. `resolve_representative` (`nodes_representative.yaml`) — **Mode 1**, each clade's
-   representative sample node (exact string match), used only to cross-check.
-4. `compare_and_build` (`usher_masked_sites.yaml`, `usher_masked_sites_pango.yaml`,
-   `anchoring_comparison.txt`, `anchor_distances.yaml`) — builds **both** the
-   Nextstrain-clade and PANGO-clade outputs from the founder anchoring, and
-   tabulates the founder-vs-representative distance per clade (§ *Anchor cross-check*).
-5. `check_anchors` (`anchor_check.txt`) — fails the run if any founder anchor is
-   more than `max_anchor_distance` mutations (patristic) from its representative.
-6. `check_recovery` (`recovery_report.txt`, `recovery_summary.txt`) — the old-scheme
-   superset check on the Nextstrain output (pass/fail), plus the per-clade
-   added-mask summary table; under `strict: true` a true shortfall fails the run.
-
-The numbered stages below detail the generation logic these rules carry out.
+The pipeline is a DAG of cached Snakemake rules, so each stage re-runs only when its
+inputs change. The numbered stages below detail the generation logic; where a stage
+corresponds to one or more rules, the rule name(s) and the `results/…` file(s) they
+write are noted inline.
 
 ### 1. Parse the UCSC spec (`parse_branch_spec`)
 
@@ -182,6 +167,9 @@ Two `matUtils extract` passes on the full `.pb.gz`:
 - `--sample-paths` → each sample's root → tip node chain. Read to resolve each
   clade's *representative sample* node (`resolve_representative_nodes`) for the
   founder cross-check (§3), and to obtain each anchor node's ancestor chain (§5).
+
+*Rules `extract_sample_paths` → `results/sample_paths.tsv` and `extract_clade_paths`
+→ `results/clade_paths.tsv`.*
 
 ### 3. Anchor each PANGO clade at its founder, cross-checked by its representative (`resolve_founder_or_fail` + `compute_anchor_distances`)
 
@@ -232,6 +220,12 @@ Both tables live in `config.yaml` (`representative_name_overrides` /
 `representative_absent_ok`), validated at load time; revisit them whenever the spec
 or the tree is refreshed.
 
+*Rules `resolve_founder` → `results/nodes_founder.yaml` and `resolve_representative`
+→ `results/nodes_representative.yaml` produce the two anchors; `compare_and_build`
+writes the distance tables (`anchoring_comparison.txt`, `anchor_distances.yaml`) and
+`check_anchors` → `anchor_check.txt` enforces the bound (see
+[Anchor cross-check](#anchor-cross-check-founder-vs-representative)).*
+
 ### 4. Enumerate Nextstrain clades (`load_nextstrain_clade_values`)
 
 From the metadata `Nextstrain_clade` column. Keeps full values (`"22A (BA.4)"`)
@@ -277,6 +271,12 @@ discards those positions via its range filter at runtime, so masking them was
 redundant; omitting them keeps the file focused on the masks that actually affect
 results. The old-scheme recovery check (below) treats old UTR masks as
 intentionally dropped rather than as failures.
+
+*Stages 4–7 all run in the `compare_and_build` rule, which writes
+`results/usher_masked_sites.yaml` and `results/usher_masked_sites_pango.yaml`. A
+final rule, `check_recovery` → `results/recovery_report.txt` and
+`results/recovery_summary.txt`, checks that Nextstrain output against the old scheme
+(see [How the new masks match the old ones](#how-the-new-masks-match-the-old-ones)).*
 
 ## Anchor cross-check (founder vs. representative)
 
