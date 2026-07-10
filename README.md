@@ -431,21 +431,3 @@ approved entry to `representative_name_overrides` (renamed) or
 `representative_absent_ok` (genuinely absent) in `config.yaml` — the script never
 guesses. Raise `max_anchor_distance` only after confirming by hand that the founder
 and representative anchors really are close.
-
-## Caveats / accepted approximations
-
-- **Coarsening loss (accepted).** PANGO clades finer than any Nextstrain clade
-  are widened to the enclosing Nextstrain clade (over-mask). Logged per clade.
-- **Reversions.** Handled at the mutation level, not blanket-masked over the site.
-- **Exclusions.** Per-sample un-masking of a site cannot be expressed at
-  Nextstrain granularity → skipped + logged (currently only BA.2.86 site 23599).
-- **Recombinants.** The non-monophyletic `recombinant` clade has no single
-  founder node and is left unmasked.
-- **Founder anchoring (manual sign-off).** Masks are anchored at each clade's
-  founder (MRCA); the representative (matched by exact pre-`|` name only) is a
-  cross-check bounded by `max_anchor_distance`. Name overrides and absent-ok
-  entries each require a hard-coded, human-reviewed config entry (see §3).
-- **GISAID tree required.** Several representatives are GISAID-only; outputs
-  inherit GISAID redistribution terms (the YAML itself carries no sequence data).
-- **Drift.** The UCSC spec grows as new lineages are designated; the vendored copy
-  is pinned to a specific commit and should be refreshed periodically.
