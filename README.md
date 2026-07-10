@@ -286,10 +286,21 @@ results. The old-scheme recovery check (below) treats old UTR masks as
 intentionally dropped rather than as failures.
 
 *Stages 4–7 all run in the `compare_and_build` rule, which writes
-`results/usher_masked_sites.yaml` and `results/usher_masked_sites_pango.yaml`. A
-final rule, `check_recovery` → `results/recovery_report.txt` and
-`results/recovery_summary.txt`, checks that Nextstrain output against the old scheme
-(see [How the new masks match the old ones](#how-the-new-masks-match-the-old-ones)).*
+`results/usher_masked_sites.yaml` and `results/usher_masked_sites_pango.yaml`.*
+
+### 8. Validate old-scheme recovery (`check_recovery`)
+
+A final rule reads the written Nextstrain YAML back and checks it is a **superset**
+of the vendored old hand-made scheme within the include range: every old
+`(clade, site)` mask must still be masked — as a whole site, or now at the mutation
+level. Under `strict: true` a true shortfall **fails the run**; the output is only
+validated, never edited to fill a gap. The rule also writes the per-clade
+added-mask summary. See [How the new masks match the old
+ones](#how-the-new-masks-match-the-old-ones) for the recovery rules and the summary
+table.
+
+*Rule `check_recovery` → `results/recovery_report.txt` and
+`results/recovery_summary.txt`.*
 
 ## Anchor cross-check (founder vs. representative)
 
