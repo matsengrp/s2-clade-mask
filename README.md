@@ -78,36 +78,17 @@ generation code itself only uses the Python standard library plus `pyyaml`.
 ## Usage
 
 All run parameters live in `config.yaml`. Edit it to point at your input tree /
-metadata, then run **from the repo root** (so the relative paths resolve).
-
-### Pipeline (primary path)
-
-The generation is decomposed into cached [Snakemake](https://snakemake.readthedocs.io)
-rules, so each expensive stage re-runs only when its inputs change — the two
-`matUtils extract` passes especially (the `--sample-paths` pass is ~1 h and
-produces a ~19 GB file). Run:
+metadata, then run **from the repo root** (so the relative paths resolve):
 
 ```bash
 snakemake --cores 4
 ```
 
-Rule DAG (`results/…` outputs in parentheses):
-
-1. `extract_sample_paths` (`sample_paths.tsv`) and `extract_clade_paths`
-   (`clade_paths.tsv`) — the two `matUtils extract` passes.
-2. `resolve_founder` (`nodes_founder.yaml`) — **Mode 2**, each clade anchored at
-   its annotated founder (MRCA) node. This is the **primary** anchor (§3).
-3. `resolve_representative` (`nodes_representative.yaml`) — **Mode 1**, each clade's
-   representative sample node (exact string match), used only to cross-check.
-4. `compare_and_build` (`usher_masked_sites.yaml`, `usher_masked_sites_pango.yaml`,
-   `anchoring_comparison.txt`, `anchor_distances.yaml`) — builds **both** the
-   Nextstrain-clade and PANGO-clade outputs from the founder anchoring, and
-   tabulates the founder-vs-representative distance per clade (§ *Anchor cross-check*).
-5. `check_anchors` (`anchor_check.txt`) — fails the run if any founder anchor is
-   more than `max_anchor_distance` mutations (patristic) from its representative.
-6. `check_recovery` (`recovery_report.txt`, `recovery_summary.txt`) — the old-scheme
-   superset check on the Nextstrain output (pass/fail), plus the per-clade
-   added-mask summary table; under `strict: true` a true shortfall fails the run.
+The generation is decomposed into cached [Snakemake](https://snakemake.readthedocs.io)
+rules (see [How the Snakemake pipeline works](#how-the-snakemake-pipeline-works)),
+so each expensive stage re-runs only when its inputs change — the two
+`matUtils extract` passes especially (the `--sample-paths` pass is ~1 h and produces
+a ~19 GB file).
 
 Use the **full gisaid-and-public** MAT — not the public-only tree (it is missing
 several GISAID-only representatives) and not a filtered per-run tree (all clades
@@ -159,10 +140,28 @@ disk with room.
 > site numbers and mutation strings (no sequence data), but representative sample
 > names appear in the run log.
 
-## How generation works, stage by stage
+## How the Snakemake pipeline works
 
-The pipeline rules map onto these stages (§ *Usage*); the numbered steps below are
-the shared generation logic in `scripts/s2clademask.py`.
+The pipeline runs as a DAG of cached rules (`results/…` outputs in parentheses):
+
+1. `extract_sample_paths` (`sample_paths.tsv`) and `extract_clade_paths`
+   (`clade_paths.tsv`) — the two `matUtils extract` passes.
+2. `resolve_founder` (`nodes_founder.yaml`) — **Mode 2**, each clade anchored at
+   its annotated founder (MRCA) node. This is the **primary** anchor (§3).
+3. `resolve_representative` (`nodes_representative.yaml`) — **Mode 1**, each clade's
+   representative sample node (exact string match), used only to cross-check.
+4. `compare_and_build` (`usher_masked_sites.yaml`, `usher_masked_sites_pango.yaml`,
+   `anchoring_comparison.txt`, `anchor_distances.yaml`) — builds **both** the
+   Nextstrain-clade and PANGO-clade outputs from the founder anchoring, and
+   tabulates the founder-vs-representative distance per clade (§ *Anchor cross-check*).
+5. `check_anchors` (`anchor_check.txt`) — fails the run if any founder anchor is
+   more than `max_anchor_distance` mutations (patristic) from its representative.
+6. `check_recovery` (`recovery_report.txt`, `recovery_summary.txt`) — the old-scheme
+   superset check on the Nextstrain output (pass/fail), plus the per-clade
+   added-mask summary table; under `strict: true` a true shortfall fails the run.
+
+Each rule is a thin entrypoint that imports `scripts/s2clademask.py`; the numbered
+stages below are the shared generation logic those rules run.
 
 ### 1. Parse the UCSC spec (`parse_branch_spec`)
 
