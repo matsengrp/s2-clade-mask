@@ -1,17 +1,25 @@
 # s2-clade-mask
 
-Generate `usher_masked_sites.yaml` — the per-**Nextstrain-clade** site/mutation
-masking file used by the [`mat-pcp`](https://github.com/matsengrp/mat-pcp)
-SARS-CoV-2 pipeline — from the UCSC PANGO-lineage-keyed branch-specific masking
-spec (`branchSpecificMask.yml`).
+`s2-clade-mask` generates two SARS-CoV-2 site/mutation masking files from the
+UCSC PANGO-lineage-keyed branch-specific masking spec (`branchSpecificMask.yml`):
 
-This repository is **standalone**: its job is to produce
-`results/usher_masked_sites.yaml` (plus a companion per-PANGO-lineage file,
-`results/usher_masked_sites_pango.yaml`). Generation needs the full
-gisaid-and-public mutation-annotated tree (MAT) — ~17M samples on the 2026-04-22
-tree, and growing — plus `matUtils`; application does not. When the masks are refreshed here, the Nextstrain-clade YAML is copied into
-`mat-pcp` (`data/usher_masked_sites.yaml`) — that copy is the only thing `mat-pcp`
-needs from this repo.
+- **`results/usher_masked_sites.yaml`** — keyed by **Nextstrain clade** (`21A`,
+  `22B`). Consumed by the [`mat-pcp`](https://github.com/matsengrp/mat-pcp)
+  SARS-CoV-2 pipeline.
+- **`results/usher_masked_sites_pango.yaml`** — keyed by **PANGO lineage** (`BA.4`,
+  `BQ.1.1`). Used in other contexts that work at PANGO-lineage granularity.
+
+Both carry the same underlying masks and are produced together from a single run;
+they differ only in the clade level they are keyed by — the Nextstrain file
+coarsens PANGO clades finer than a Nextstrain clade up to the enclosing Nextstrain
+clade (over-mask), while the PANGO file keeps them at full lineage resolution.
+
+This repository is **standalone**. Generation needs the full gisaid-and-public
+mutation-annotated tree (MAT) — ~17M samples on the 2026-04-22 tree, and growing —
+plus `matUtils`; downstream application of either file does not. When the masks are
+refreshed here, the Nextstrain-clade YAML is copied into `mat-pcp`
+(`data/usher_masked_sites.yaml`) — that copy is the only thing `mat-pcp` needs from
+this repo.
 
 ## Contents
 
@@ -29,7 +37,7 @@ s2-clade-mask/
 │   ├── compare_and_build.py             # rule: emit both YAMLs + anchor cross-check table
 │   ├── check_anchors.py                 # rule: enforce max_anchor_distance
 │   ├── check_recovery.py                # rule: superset recovery vs old scheme
-│   └── generate_usher_masked_sites.py   # one-shot wrapper (same logic, single process)
+│   └── generate_usher_masked_sites.py   # optional one-shot wrapper (same logic, single process)
 ├── data/
 │   ├── branchSpecificMask.yml           # vendored UCSC input spec (pinned commit)
 │   └── usher_masked_sites_old_scheme.yml # vendored jbloomlab old-scheme baseline (pinned commit)
@@ -53,7 +61,7 @@ Two masking systems with incompatible keys:
   old `maskDelta.sh` approach; see
   [yatisht/usher#324](https://github.com/yatisht/usher/issues/324).
 
-`generate_usher_masked_sites.py` is an **offline** bridge: it reads the PANGO
+The `s2-clade-mask` pipeline is an **offline** bridge: it reads the PANGO
 spec, uses a full **gisaid-and-public** MAT to compute real tree ancestry (the
 GISAID tree is required because several representative samples are GISAID-only),
 coarsens PANGO → Nextstrain, and emits the flat Nextstrain-keyed file `mat-pcp`
@@ -64,9 +72,7 @@ already knows how to consume.
 ```bash
 conda env create -f environment.yml
 conda activate s2-clade-mask
-# sanity check
-snakemake -n                                          # dry-run the pipeline DAG
-python scripts/generate_usher_masked_sites.py --help  # or the one-shot wrapper
+snakemake -n   # sanity check: dry-run the pipeline DAG
 ```
 
 The `s2-clade-mask` conda env created above supplies everything the pipeline
@@ -117,18 +123,6 @@ sample_paths: results/sample_paths.tsv
 clade_paths: results/clade_paths.tsv
 ```
 
-### One-shot wrapper
-
-For a quick local run, the same library logic runs in a single process:
-
-```bash
-python scripts/generate_usher_masked_sites.py --config config.yaml
-```
-
-It produces identical outputs (both paths call the same `scripts/s2clademask.py`
-functions and enforce the same anchor cross-check); it just doesn't cache the
-intermediates or write the standalone report files.
-
 Use the **full gisaid-and-public** MAT — not the public-only tree (it is missing
 several GISAID-only representatives) and not a filtered per-run tree (all clades
 must be present / annotated). At the Hutch a recent tree lives at
@@ -136,6 +130,12 @@ must be present / annotated). At the Hutch a recent tree lives at
 `config.yaml` at the **GISAID-named** files (`*.gisaidNames.pb.gz` /
 `*.gisaidNames.metadata.tsv.gz`), whose sample names are what the spec
 representatives match against.
+
+> **One-shot alternative.** `python scripts/generate_usher_masked_sites.py --config
+> config.yaml` runs every stage in a single process — same library, identical
+> outputs, same anchor cross-check. It's handy for a quick local run, but it doesn't
+> cache the expensive intermediates or write the standalone report files, so the
+> Snakemake pipeline above is the recommended path.
 
 `config.yaml` keys:
 
@@ -180,7 +180,10 @@ disk with room, or set `sample_paths` / `clade_paths` to skip `matUtils`.
 > site numbers and mutation strings (no sequence data), but representative sample
 > names appear in the run log.
 
-## How the script works, stage by stage
+## How generation works, stage by stage
+
+The pipeline rules map onto these stages (§ *Usage*); the numbered steps below are
+the shared generation logic in `scripts/s2clademask.py`.
 
 ### 1. Parse the UCSC spec (`parse_branch_spec`)
 
