@@ -111,7 +111,6 @@ representatives match against.
 | `clade_column` | metadata clade column (default `Nextstrain_clade`) |
 | `site_include_start` / `site_include_end` | coding range `[266, 29674]`; UTR masks outside it are dropped |
 | `strict` | fail if old masks are not fully recovered |
-| `union_old` | force-include any unrecovered old masks |
 | `matutils`, `workdir` | binary name and scratch dir for the large paths files |
 | `nodes_representative`, `nodes_founder` | founder / representative node-map intermediates (default `results/nodes_{founder,representative}.yaml`) |
 | `comparison_report` | human anchor-distance table (default `results/anchoring_comparison.txt`) |
@@ -344,7 +343,8 @@ On the 2026-04-22 gisaid-and-public tree (founder-anchored), the recovery check
 passes (exit 0): every old `(clade, site)` pair is preserved, with 141 whole-site →
 mutation downgrades (in `22B` / `22D` / `22E`), 217 old UTR masks intentionally
 dropped, and zero truly missing. `strict: true` makes any *true* shortfall a hard
-error; `union_old: true` would force-include unrecovered old masks.
+error — the check only validates against the old file; it never edits the output to
+paper over a gap.
 
 ### Per-clade breakdown of added masks
 

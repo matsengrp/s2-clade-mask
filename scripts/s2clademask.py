@@ -709,8 +709,7 @@ def load_generated_masks(yaml_path):
     return result
 
 
-def check_recovers_old(old_sites, clade_masks, union_old, include_range=None,
-                       log_file=None):
+def check_recovers_old(old_sites, clade_masks, include_range=None, log_file=None):
     """Verify the new file recovers every old ``(clade, site)`` mask.
 
     An old site is recovered if it is still masked as a **site**, or if it is now
@@ -765,16 +764,6 @@ def check_recovers_old(old_sites, clade_masks, union_old, include_range=None,
             log_file)
         for clade in sorted(truly_missing):
             log(f"  {clade}: {sorted(truly_missing[clade])}", log_file)
-        if union_old:
-            log("--union-old set: force-including the unrecovered old masks.",
-                log_file)
-            for clade, gap in truly_missing.items():
-                clade_masks.setdefault(
-                    clade, {"sites": set(), "mutations": set(), "sources": []}
-                )
-                clade_masks[clade]["sites"].update(gap)
-                if "old:usher_masked_sites.yaml" not in clade_masks[clade]["sources"]:
-                    clade_masks[clade]["sources"].append("old:usher_masked_sites.yaml")
     else:
         log("OLD-SCHEME RECOVERY: OK -- every old (clade, site) mask is recovered "
             "as a site or mutation mask.", log_file)
@@ -961,7 +950,6 @@ CONFIG_DEFAULTS = {
     "site_include_end": 29674,
     "matutils": "matUtils",
     "workdir": "results",        # dir for the (large) temporary paths files
-    "union_old": False,          # force-include any unrecovered old masks
     "strict": False,             # exit nonzero if old masks are not fully recovered
     "log": None,
     # Second output: per-PANGO-lineage masks (companion to the Nextstrain output).

@@ -173,13 +173,8 @@ def main(argv=None):
         spec, founder_node, list(spec), clade_founders, sample_paths,
         start, end, log_file, chains=chains)
 
-    # union_old force-include must happen before writing the Nextstrain output
-    # (mutates ns_masks); the strict recovery gate lives in the check_recovery rule.
-    if cfg["union_old"] and cfg["old_yaml"]:
-        old_sites = lib.load_old_sites(cfg["old_yaml"])
-        lib.check_recovers_old(old_sites, ns_masks, union_old=True,
-                               include_range=(start, end), log_file=log_file)
-
+    # The output is written as-is; the check_recovery rule validates old-scheme
+    # recovery and never edits the output to fill a gap.
     dropped_exclusions = {c: e["exclusions"] for c, e in spec.items() if e["exclusions"]}
     tree_name = os.path.basename(cfg["tree"]) if cfg["tree"] else "(sample-paths supplied)"
     base_prov = [

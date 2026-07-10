@@ -51,7 +51,6 @@ site_include_start: 266
 site_include_end: 29674
 
 strict: true       # fail (nonzero exit) if old masks are not fully recovered
-union_old: false   # force-include any unrecovered old masks instead of failing
 
 # Anchor cross-check: each clade is founder-anchored; fail if a clade's founder
 # node sits more than this many mutations (patristic) from its representative

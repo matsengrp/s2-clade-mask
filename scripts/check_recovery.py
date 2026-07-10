@@ -64,11 +64,9 @@ def main(argv=None):
             f"(range [{start}, {end}], strict={cfg['strict']})", out_report)
     clade_masks = lib.load_generated_masks(gen_yaml)
     old_sites = lib.load_old_sites(old_yaml)
-    # union_old is applied at build time (compare_and_build); here we only report
-    # and, under strict, gate -- so never mutate the on-disk output.
+    # Validate only -- the on-disk output is never mutated to paper over a gap.
     truly_missing = lib.check_recovers_old(
-        old_sites, clade_masks, union_old=False, include_range=(start, end),
-        log_file=out_report)
+        old_sites, clade_masks, include_range=(start, end), log_file=out_report)
 
     # Per-clade added-mask summary table (regenerated each run; mirrors README).
     _, totals = lib.write_recovery_summary(
@@ -77,7 +75,7 @@ def main(argv=None):
     lib.log(f"OLD-SCHEME RECOVERY: wrote added-mask summary ({totals['added']} "
             f"masks added over the old scheme) to {out_summary}", out_report)
 
-    if truly_missing and cfg["strict"] and not cfg["union_old"]:
+    if truly_missing and cfg["strict"]:
         lib.log("ERROR: strict=true and old masks not fully recovered (see above).",
                 out_report)
         return 1
