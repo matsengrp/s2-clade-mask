@@ -133,7 +133,8 @@ version-controlled, those entries are reviewed exactly like code.
 `matUtils extract --sample-paths` on a tree this size (~17M samples) produces a large paths
 file (tens of GB); the generator reads it only until every anchor node's ancestor
 chain has been seen (early exit), so memory stays modest. Point `workdir` at a
-disk with room.
+disk with room — the file is a Snakemake `temp` output, deleted automatically once
+the masks are built, so it is not left behind after the run.
 
 > **Note — GISAID redistribution.** Outputs derived from a GISAID tree inherit
 > GISAID's redistribution terms. `usher_masked_sites.yaml` itself contains only
@@ -177,7 +178,9 @@ Two `matUtils extract` passes on the full `.pb.gz`:
   founder cross-check (§3), and to obtain each anchor node's ancestor chain (§5).
 
 *Rules `extract_sample_paths` → `results/sample_paths.tsv` and `extract_clade_paths`
-→ `results/clade_paths.tsv`.*
+→ `results/clade_paths.tsv`. The `sample_paths.tsv` (~19 GB) is a Snakemake `temp`
+output: it is deleted automatically once the last rule that reads it
+(`compare_and_build`) finishes, so it is not left on disk after the run.*
 
 ### 3. Anchor each PANGO clade at its founder, cross-checked by its representative (`resolve_founder_or_fail` + `compute_anchor_distances`)
 

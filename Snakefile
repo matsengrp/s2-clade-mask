@@ -47,11 +47,15 @@ rule all:
 
 
 rule extract_sample_paths:
-    """matUtils extract --sample-paths (root->tip node chain per sample; ~19 GB)."""
+    """matUtils extract --sample-paths (root->tip node chain per sample; ~19 GB).
+
+    Marked temp() so Snakemake deletes the large TSV once the last rule that reads it
+    (compare_and_build) has finished -- it is not left on disk after the run.
+    """
     input:
         tree=config["tree"],
     output:
-        SAMPLE_PATHS,
+        temp(SAMPLE_PATHS),
     shell:
         "python scripts/extract_paths.py --config {CONFIG} --kind sample --out {output}"
 
