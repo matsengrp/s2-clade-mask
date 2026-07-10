@@ -75,11 +75,8 @@ GISAID-only representatives) or a filtered per-run tree.
    sample is resolved only to *verify* the founder: the pipeline **asserts** the
    founder and representative anchors are within `max_anchor_distance` mutations
    (patristic) of each other. We never fall back to the representative for
-   resolution. (History: an earlier design was representative-primary with founder
-   as fallback; it was reversed because the founder is the more stable anchor and
-   the representative can sit just across a Nextstrain-clade boundary — e.g.
-   BA.2.75 — over-broadening the coarsened mask. The cross-check keeps the
-   deliberate divergence from upstream `matUtils mask`'s node choice provably tiny.)
+   resolution. The cross-check keeps the deliberate divergence from upstream
+   `matUtils mask`'s node choice provably tiny.
 2. **Exact matching only.** The representative (used for the cross-check) matches
    the tree sample name by exact equality on the field **before the first `|`**.
    Never add fuzzy/substring matching. A representative that is absent and not

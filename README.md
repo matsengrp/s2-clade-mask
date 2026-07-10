@@ -241,10 +241,7 @@ for founder lookup; the **output key** is the bare token (`"22A"`) via
 The core logic, run for **two target levels**: Nextstrain clades (the mat-pcp
 output) and PANGO clades (the companion output). Each PANGO clade `P` is anchored
 at its founder node `f(P)` (§3); each target clade `C` at its own founder (MRCA)
-node. Working from single anchor nodes (not individual member samples) is
-deliberate: it is noise-free, whereas a per-sample membership rule lets recombinants
-and mislabeled samples bleed masks across unrelated clades. A target clade `C`
-inherits PANGO clade `P`'s masks iff:
+node. A target clade `C` inherits PANGO clade `P`'s masks iff:
 
 - **(a)** `f(P)` lies on the root → `founder(C)` chain — `P` is an ancestor
   of `C`, so all of `C` descends from `f(P)`; the mask applies **exactly**; or
