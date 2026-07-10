@@ -167,6 +167,13 @@ should be *un-masked* at that site (e.g. `BA.2.86` masks site 23599, but its
 per-sub-lineage carve-outs can't be expressed at clade granularity, so they are
 dropped and logged in §6, leaving the site masked clade-wide.
 
+Each spec field maps to the output as:
+
+- `ranges` + `sites` → **site masks**.
+- `reversions` → **mutation masks** (directional `refPOSalt`, matching mat-pcp's
+  `nt_mutation`, *not* expanded to whole sites).
+- `exclusions` → set aside, then dropped and logged (§6).
+
 ### 2. Extract clade and sample paths from the tree
 
 Two `matUtils extract` passes on the full `.pb.gz`:
@@ -259,7 +266,7 @@ Some *target* Nextstrain clades in the metadata have no founder node in the tree
 recombinant or very recent lineages that aren't monophyletic, so `matUtils
 --clade-paths` gives them no MRCA (on the 2026-04-22 tree: `recombinant`,
 `25G (XFC)`, `25H (XFJ)`, `25D (MC.10.2.1)`, `25E (PY.1)`, `25F (NW.1.2)`,
-`25I (BA.3.2)`). These are logged and get no mask block. (Every *spec* clade in
+`25I (BA.3.2)`. These are logged and get no mask block. (Every *spec* clade in
 `branchSpecificMask.yml` must have a founder, or the run is a hard error — §3.)
 
 ### 6. Accumulate & emit (`build_clade_masks` → `write_output`)
@@ -297,8 +304,7 @@ mutations** — and the exact set of mutations separating them. `check_anchors` 
 **fails the run** if any clade's distance exceeds `max_anchor_distance` (default 4,
 the empirical maximum), or if a representative is absent without being listed in
 `representative_absent_ok`. On the 2026-04-22 tree every clade is within 4
-mutations, so the assertion passes. (This replaces the earlier ad-hoc
-`compare_anchoring.py` diagnostic.)
+mutations, so the assertion passes.
 
 ## Output schema
 
@@ -312,14 +318,6 @@ mask_22B:
   sites: [11288, 11289, ...]    # whole-site masks (1-based genome positions)
   mutations: ['G670T', ...]     # optional; directional refPOSalt exclusions
 ```
-
-Mapping of source fields:
-
-- `ranges` + `sites` → **site masks**.
-- `reversions` → **mutation masks** (directional `refPOSalt`, matching mat-pcp's
-  `nt_mutation`, *not* expanded to whole sites).
-- `exclusions` → dropped + logged (cannot express per-sample un-masking at
-  clade granularity).
 
 **Consumed in `mat-pcp`** by `count_mutations.py` (unions `mutations` into its
 `muts_to_exclude` set) and `aggregate_mutations_to_exclude.py` (emits one row per
