@@ -250,11 +250,14 @@ node. A target clade `C` inherits PANGO clade `P`'s masks iff:
   **widened** to all of `C` (over-mask coarsening).
 
 For **Nextstrain** targets, rule (b) attributes a fine PANGO clade to the Nextstrain
-clade its samples *actually carry* — e.g. `KP.3.1.1` → `24E`, not its ancestor
-`24A`. For **PANGO** targets, rule (b) reduces to self-assignment (a clade encloses
-its own founder), so each PANGO clade accumulates its own masks plus those of its
-ancestral spec clades (e.g. `BQ.1.1` ⊇ `BQ.1` ⊇ `BA.5`) with no coarsening. Clades
-with no founder node (non-monophyletic `recombinant`) are logged and left unmasked.
+clade its samples *actually carry* — e.g. `KP.3.1.1` is coarsened to `24E`, not to
+its ancestor `24A`. For **PANGO** targets, rule (b) reduces to self-assignment (a
+clade encloses its own founder), so each PANGO clade accumulates its own masks plus
+those of every ancestral spec clade above it in the tree, with no coarsening. The
+`KP.3.1.1` PANGO block, for instance, unions its own masks with those of its
+ancestral spec clades `JN.1`, `BA.2.86`, and `BA.2` — the same masks that rule (b)
+coarsens into `24E` on the Nextstrain side. Clades with no founder node
+(non-monophyletic `recombinant`) are logged and left unmasked.
 
 ### 6. Accumulate & emit (`build_clade_masks` → `write_output`)
 
