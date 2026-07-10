@@ -516,16 +516,20 @@ def main(argv=None):
     out_pango = cli.out_pango or cfg["output_pango"]
     out_comparison = cli.out_comparison or cfg["comparison_report"]
     out_distances = cli.out_distances or cfg["anchor_distances"]
+    # Both path files are required inputs and have no config default (unlike outputs).
     if not sample_paths:
         raise ValueError("need --sample-paths")
     if not clade_paths:
         raise ValueError("need --clade-paths")
 
+    # Ensure every output directory exists before writing.
     for path in (out_yaml, out_pango, out_comparison, out_distances):
         d = os.path.dirname(os.path.abspath(path))
         if d:
             os.makedirs(d, exist_ok=True)
 
+    # Inputs: the spec (masks per PANGO clade), the founder node of every annotated
+    # clade (PANGO + Nextstrain), the target Nextstrain clade labels, and the range.
     spec, version = lib.parse_branch_spec(cfg["branch_spec"])
     lib.log(f"Parsed {len(spec)} PANGO clades, spec version {version}", log_file)
     clade_founders = lib.parse_clade_paths(clade_paths)
@@ -579,8 +583,9 @@ def main(argv=None):
         spec, founder_node, list(spec), clade_founders, sample_paths,
         start, end, log_file, chains=chains)
 
-    # The output is written as-is; the check_recovery rule validates old-scheme
-    # recovery and never edits the output to fill a gap.
+    # Per-sample 'exclusions' can't be expressed at clade granularity, so they are
+    # dropped (the site stays masked clade-wide) and listed in the file header as a
+    # NOTE. Collect them plus the shared provenance block both outputs carry.
     dropped_exclusions = {c: e["exclusions"] for c, e in spec.items() if e["exclusions"]}
     tree_name = os.path.basename(cfg["tree"]) if cfg["tree"] else "(sample-paths supplied)"
     base_prov = [
@@ -591,6 +596,8 @@ def main(argv=None):
         f"include range: [{start}, {end}] (masks outside this range are omitted)",
         "anchoring:     founder (MRCA) node per PANGO clade",
     ]
+    # Write both YAMLs as-is; the check_recovery rule validates old-scheme recovery
+    # separately and never edits these files to paper over a gap.
     write_output(out_yaml, ns_masks, spec, base_prov, dropped_exclusions,
                  level="Nextstrain")
     lib.log(f"Wrote {out_yaml}", log_file)

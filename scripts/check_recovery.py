@@ -256,6 +256,8 @@ def main(argv=None):
     p.add_argument("--out-summary", help="Per-clade added-mask summary table.")
     cli = p.parse_args(argv)
 
+    # CLI args win over config defaults. gen_yaml is the freshly-built output being
+    # checked; old_yaml is the fixed historical baseline it must remain a superset of.
     cfg = lib.load_config(cli.config)
     gen_yaml = cli.yaml or cfg["output"]
     old_yaml = cli.old or cfg["old_yaml"]
@@ -268,9 +270,10 @@ def main(argv=None):
         if d:
             os.makedirs(d, exist_ok=True)
 
-    # Log to the report file (check_recovers_old logs its findings line by line).
+    # Truncate the report up front; check_recovers_old appends its findings line by line.
     open(out_report, "w").close()
 
+    # old_yaml is optional: with no baseline configured there is nothing to check.
     if not old_yaml:
         lib.log("No 'old_yaml' configured -- skipping old-scheme recovery check.",
                 out_report)
@@ -280,9 +283,11 @@ def main(argv=None):
 
     lib.log(f"OLD-SCHEME RECOVERY CHECK: {gen_yaml} vs {old_yaml} "
             f"(range [{start}, {end}], strict={cfg['strict']})", out_report)
+    # Read both schemes back from disk and check every old (clade, site) is still
+    # masked (as a site, or now at the mutation level). Validate only -- the on-disk
+    # output is never mutated to paper over a gap.
     clade_masks = load_generated_masks(gen_yaml)
     old_sites = load_old_sites(old_yaml)
-    # Validate only -- the on-disk output is never mutated to paper over a gap.
     truly_missing = check_recovers_old(
         old_sites, clade_masks, include_range=(start, end), log_file=out_report)
 
@@ -293,6 +298,8 @@ def main(argv=None):
     lib.log(f"OLD-SCHEME RECOVERY: wrote added-mask summary ({totals['added']} "
             f"masks added over the old scheme) to {out_summary}", out_report)
 
+    # Under strict mode a genuine shortfall is a hard failure (invariant #4); a
+    # non-strict run reports it but still exits 0.
     if truly_missing and cfg["strict"]:
         lib.log("ERROR: strict=true and old masks not fully recovered (see above).",
                 out_report)

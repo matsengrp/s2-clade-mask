@@ -30,6 +30,8 @@ def main(argv=None):
     p.add_argument("--out", help="Assertion-result report.")
     cli = p.parse_args(argv)
 
+    # CLI args win over config defaults; the threshold + approved-absent list drive
+    # the pass/fail decisions below.
     cfg = lib.load_config(cli.config)
     distances_path = cli.distances or cfg["anchor_distances"]
     out_report = cli.out or cfg["anchor_check_report"]
@@ -62,9 +64,11 @@ def main(argv=None):
                 lib.log(f"  {clade}: representative absent (approved) -- skipped",
                         out_report)
             continue
+        # An anchor node that never showed up in a sample path is a data problem.
         if d.get("error"):
             failures.append(f"{clade}: {d['error']}")
             continue
+        # Otherwise pass iff the founder is within max_dist mutations of the rep.
         dm = d.get("d_muts")
         if dm is None:
             failures.append(f"{clade}: missing distance data")

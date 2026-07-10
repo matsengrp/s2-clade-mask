@@ -192,6 +192,7 @@ def main(argv=None):
     p.add_argument("--out", required=True, help="Output node-map YAML path.")
     cli = p.parse_args(argv)
 
+    # Load + validate the config, then parse the spec both modes anchor from.
     cfg = lib.load_config(cli.config)
     log_file = cfg["log"]
     lib.validate_resolution_overrides(cfg["representative_name_overrides"],
@@ -199,11 +200,15 @@ def main(argv=None):
     spec, version = lib.parse_branch_spec(cfg["branch_spec"])
     lib.log(f"Parsed {len(spec)} PANGO clades, spec version {version}", log_file)
 
+    # Make sure the output directory exists before we write the node map.
     out_dir = os.path.dirname(os.path.abspath(cli.out))
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
 
+    # Each mode produces the same node-map artifact from a different input file and
+    # anchoring rule; `via` records how each clade was anchored, `meta` is provenance.
     if cli.mode == "representative":
+        # Mode 1 reads the (large) per-sample paths and string-matches representatives.
         sample_paths = cli.sample_paths
         if not sample_paths:
             raise ValueError("mode representative needs --sample-paths")
@@ -211,8 +216,10 @@ def main(argv=None):
                 "sample nodes (for the founder cross-check)...", log_file)
         clade_to_node, via, unresolved = resolve_representative_only(
             spec, sample_paths, cfg["representative_name_overrides"], log_file)
-        # An absent representative is only acceptable if the maintainer has approved
-        # it in representative_absent_ok (its founder cross-check is then skipped).
+        # A representative missing from the tree is only acceptable if the maintainer
+        # has approved it in representative_absent_ok (its cross-check is then
+        # skipped). Any other absence is a hard error naming the clade -- never a
+        # silent guess -- so a spec/tree rename can't slip through unnoticed.
         not_ok = [c for c in unresolved if c not in cfg["representative_absent_ok"]]
         if not_ok:
             detail = "\n".join(
@@ -227,6 +234,7 @@ def main(argv=None):
         meta = {"mode": "representative", "spec_version": version,
                 "source": os.path.abspath(sample_paths)}
     else:
+        # Mode 2 reads the small clade-paths TSV and takes each clade's founder node.
         clade_paths = cli.clade_paths
         if not clade_paths:
             raise ValueError("mode founder needs --clade-paths")
@@ -235,13 +243,15 @@ def main(argv=None):
                 log_file)
         lib.log("Mode 2 (founder / MRCA): resolving annotated founder nodes "
                 "(each clade's anchor)...", log_file)
-        # The founder is the anchor: it must exist for every clade.
+        # The founder is the authoritative anchor, so it must exist for every clade;
+        # resolve_founder_or_fail raises (no unresolved) if any is missing.
         clade_to_node = resolve_founder_or_fail(spec, clade_founders, log_file)
         via = {c: "founder" for c in clade_to_node}
         unresolved = []
         meta = {"mode": "founder", "spec_version": version,
                 "source": os.path.abspath(clade_paths)}
 
+    # Emit the node map (shared schema) for the downstream compare_and_build rule.
     lib.write_nodes(cli.out, clade_to_node, via=via, unresolved=unresolved, meta=meta)
     lib.log(f"Resolved {len(clade_to_node)}/{len(spec)} clades ({len(unresolved)} "
             f"unresolved) -> {cli.out}", log_file)
