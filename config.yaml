@@ -64,24 +64,10 @@ max_anchor_distance: 4
 matutils: matUtils   # binary name / path (from the `usher` conda package)
 workdir: results     # dir for the large temporary matUtils paths files
 
-# Precomputed matUtils outputs (optional; skip the matUtils extract passes).
-# Under Snakemake, pointing these at existing files satisfies the extract rules'
-# inputs so they never fire -- the fast dev path (reuse the ~19 GB sample_paths):
-# sample_paths: results/sample_paths.tsv
-# clade_paths: results/clade_paths.tsv
-
-# Staged-pipeline intermediates / diagnostic reports (optional; these are the
-# defaults -- the Snakemake rules write them and the downstream rules read them).
-# All are gitignored and regenerated each run.
-# nodes_representative: results/nodes_representative.yaml   # Mode 1 node map
-# nodes_founder: results/nodes_founder.yaml                 # Mode 2 node map
-# comparison_report: results/anchoring_comparison.txt       # anchor distance table
-# anchor_distances: results/anchor_distances.yaml           # machine-readable table
-# anchor_check_report: results/anchor_check.txt             # assertion result
-# recovery_report: results/recovery_report.txt              # old-scheme recovery pass/fail
-# recovery_summary: results/recovery_summary.txt            # per-clade added-mask table
-
-# log: results/generate.log   # optional run log file
+# Optional keys with sensible defaults -- precomputed matUtils outputs
+# (sample_paths, clade_paths; the dev fast-path), the pipeline intermediate/report
+# paths, and a run-log path -- are documented in the README config-key table. Set
+# one here only to override its default.
 
 # --- Human-approved resolution deviations -----------------------------------
 #

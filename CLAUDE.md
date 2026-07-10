@@ -16,7 +16,7 @@ instead of coarsened to Nextstrain clades).
 
 When the masks are refreshed here, the resulting YAML is **copied into `mat-pcp`**
 at `data/usher_masked_sites.yaml`. That copy is the only thing `mat-pcp` needs
-from this repo; generation (which needs the full ~8M-sample MAT + `matUtils`) is
+from this repo; generation (which needs the full ~17M-sample MAT + `matUtils`) is
 fully decoupled from application.
 
 Read `README.md` for the full algorithm write-up; this file covers how to work in

@@ -7,9 +7,9 @@ spec (`branchSpecificMask.yml`).
 
 This repository is **standalone**: its job is to produce
 `results/usher_masked_sites.yaml` (plus a companion per-PANGO-lineage file,
-`results/usher_masked_sites_pango.yaml`). Generation needs the full ~8M-sample
-gisaid-and-public mutation-annotated tree (MAT) and `matUtils`; application does
-not. When the masks are refreshed here, the Nextstrain-clade YAML is copied into
+`results/usher_masked_sites_pango.yaml`). Generation needs the full
+gisaid-and-public mutation-annotated tree (MAT) — ~17M samples on the 2026-04-22
+tree, and growing — plus `matUtils`; application does not. When the masks are refreshed here, the Nextstrain-clade YAML is copied into
 `mat-pcp` (`data/usher_masked_sites.yaml`) — that copy is the only thing `mat-pcp`
 needs from this repo.
 
@@ -106,9 +106,14 @@ Rule DAG (`results/…` outputs in parentheses):
    superset check on the Nextstrain output (pass/fail), plus the per-clade
    added-mask summary table; under `strict: true` a true shortfall fails the run.
 
-To skip the ~1 h matUtils passes during development, point `sample_paths` /
-`clade_paths` in `config.yaml` at precomputed TSVs — those files then satisfy the
-inputs and the extract rules never fire.
+To skip the ~1 h matUtils passes during development, add the precomputed TSVs to
+`config.yaml` — those files then satisfy the extract rules' inputs, so the rules
+never fire (the fast dev path, reusing the ~19 GB `sample_paths`):
+
+```yaml
+sample_paths: results/sample_paths.tsv
+clade_paths: results/clade_paths.tsv
+```
 
 ### One-shot wrapper
 
@@ -145,10 +150,17 @@ representatives match against.
 | `strict` | fail if old masks are not fully recovered |
 | `union_old` | force-include any unrecovered old masks |
 | `matutils`, `workdir` | binary name and scratch dir for the large paths files |
-| `sample_paths`, `clade_paths` | precomputed matUtils outputs (skip the extract passes) |
-| `nodes_representative`, `nodes_founder` | Mode 1 / Mode 2 node-map intermediates (pipeline; gitignored) |
-| `comparison_report`, `anchor_distances`, `anchor_check_report`, `recovery_report`, `recovery_summary` | pipeline diagnostic reports (gitignored) |
-| `log` | optional run-log file |
+| `sample_paths`, `clade_paths` | precomputed matUtils outputs; set them to skip the extract passes (the dev fast-path). Default unset (the extract rules produce `results/sample_paths.tsv` / `results/clade_paths.tsv`) |
+| `nodes_representative`, `nodes_founder` | founder / representative node-map intermediates (default `results/nodes_{founder,representative}.yaml`) |
+| `comparison_report` | human anchor-distance table (default `results/anchoring_comparison.txt`) |
+| `anchor_distances` | machine-readable anchor distances (default `results/anchor_distances.yaml`) |
+| `anchor_check_report` | anchor cross-check pass/fail result (default `results/anchor_check.txt`) |
+| `recovery_report` | old-scheme recovery pass/fail (default `results/recovery_report.txt`) |
+| `recovery_summary` | per-clade added-mask table (default `results/recovery_summary.txt`) |
+| `log` | optional run-log file (default unset) |
+
+All the intermediate/report paths above default under `results/`, are gitignored,
+and are regenerated on every run; set one only to relocate that artifact.
 | `representative_name_overrides` | spec rep name → exact tree name, for reviewed renames (see §3) |
 | `representative_absent_ok` | clades whose representative is genuinely absent from the tree (cross-check skipped; founder anchoring still applies — see §3) |
 
@@ -156,7 +168,7 @@ The `config.yaml` also carries the human-approved `representative_name_overrides
 / `representative_absent_ok` tables (see §3). Because the config is
 version-controlled, those entries are reviewed exactly like code.
 
-`matUtils extract --sample-paths` on an ~8M-sample tree produces a large paths
+`matUtils extract --sample-paths` on a tree this size (~17M samples) produces a large paths
 file (tens of GB); the generator reads it only until every anchor node's ancestor
 chain has been seen (early exit), so memory stays modest. Point `workdir` at a
 disk with room, or set `sample_paths` / `clade_paths` to skip `matUtils`.
