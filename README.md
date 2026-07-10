@@ -47,24 +47,20 @@ s2-clade-mask/
 
 ## The problem the generator solves
 
-Two masking systems with incompatible keys:
+The UCSC spec `branchSpecificMask.yml` describes SARS-CoV-2 masking as clade-by-clade
+*logic* over the UShER tree, keyed by PANGO lineage: for each clade it lists the
+sites and reversion mutations to mask, anchored at that clade's node in the tree.
+Upstream, `matUtils mask` applies each clade's masks to that node **and its entire
+subtree**, so a clade's true mask is its own entries plus everything inherited from
+its ancestors — that inheritance lives in the tree topology and is never written
+out. (This spec replaced the old `maskDelta.sh` approach; see
+[yatisht/usher#324](https://github.com/yatisht/usher/issues/324).)
 
-- **mat-pcp (output):** `usher_masked_sites.yaml`, keyed by **Nextstrain clade**
-  (`21A`, `22B`). Masking is by exact string match — no tree involved at runtime.
-  Inheritance is *baked in* by repeating the accumulated sites across every
-  descendant clade's block.
-- **UCSC (input) `branchSpecificMask.yml`:** keyed by **PANGO lineage** (`BA.4`,
-  `BQ.1.1`), each anchored to a **representative sample**. Upstream,
-  `matUtils mask` applies each mask to that sample's node *and its entire
-  subtree*, so inheritance is implicit in tree topology. This spec replaced the
-  old `maskDelta.sh` approach; see
-  [yatisht/usher#324](https://github.com/yatisht/usher/issues/324).
-
-The `s2-clade-mask` pipeline is an **offline** bridge: it reads the PANGO
-spec, uses a full **gisaid-and-public** MAT to compute real tree ancestry (the
-GISAID tree is required because several representative samples are GISAID-only),
-coarsens PANGO → Nextstrain, and emits the flat Nextstrain-keyed file `mat-pcp`
-already knows how to consume.
+The goal of this pipeline is to **parse that logic into an explicit, complete list
+of masked sites and mutations for each clade.** It resolves every clade to its tree
+node, walks the topology to accumulate each clade's own masks together with all the
+masks it inherits, and writes the result out as the two flat, self-contained YAMLs
+above — so a consumer can mask by clade name alone, with no tree needed at runtime.
 
 ## Installation
 
