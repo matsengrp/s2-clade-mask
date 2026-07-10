@@ -142,19 +142,22 @@ disk with room.
 
 ## How the Snakemake pipeline works
 
-The pipeline is a DAG of cached Snakemake rules, so each stage re-runs only when its
-inputs change. The numbered stages below detail the generation logic; where a stage
-corresponds to one or more rules, the rule name(s) and the `results/…` file(s) they
-write are noted inline.
+The numbered stages below detail the generation logic; where a stage corresponds to
+one or more rules, the rule name(s) and the `results/…` file(s) they write are noted
+inline.
 
 ### 1. Parse the UCSC spec (`parse_branch_spec`)
 
 For each of the 25 PANGO clades it collects the `representative`
 (+ `representativeBacktrack`), expands every `ranges: [[lo, hi]]` into individual
 integer positions and merges with `sites` → a flat **site set**; validates each
-`reversions` string against `^[ACGT][0-9]+[ACGT]$` → a **mutation list**; keeps
-`exclusions` aside. It also asserts the spec has a `version` key (fails loudly
-if the upstream format changes).
+`reversions` string against `^[ACGT][0-9]+[ACGT]$` → a **mutation list**; and sets
+aside any `exclusions` — `{site, representative}` entries naming a sub-lineage that
+should be *un-masked* at that site (e.g. `BA.2.86` masks site 23599, but its
+`XFJ.3.1` sub-lineage has a real reversion there and is excluded). Such
+per-sub-lineage carve-outs can't be expressed at clade granularity, so they are
+dropped and logged in §6, leaving the site masked clade-wide. It also asserts the
+spec has a `version` key (fails loudly if the upstream format changes).
 
 ### 2. Get node IDs from the tree
 
