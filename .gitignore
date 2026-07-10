@@ -4,7 +4,7 @@
 *.metadata.tsv.gz
 *.taxonium.jsonl.gz
 
-# Intermediate matUtils extract outputs (land in results/ via workdir)
+# Intermediate matUtils extract outputs (land in results/)
 sample_paths*.tsv
 clade_paths*.tsv
 *.log

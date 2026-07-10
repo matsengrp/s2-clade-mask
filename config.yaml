@@ -61,7 +61,6 @@ max_anchor_distance: 4
 # --- Execution --------------------------------------------------------------
 
 matutils: matUtils   # binary name / path (from the `usher` conda package)
-workdir: results     # dir for the large temporary matUtils paths files
 
 # Optional keys with sensible defaults -- the pipeline intermediate/report paths
 # and a run-log path -- are documented in the README config-key table. Set one

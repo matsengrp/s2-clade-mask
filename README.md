@@ -111,7 +111,7 @@ representatives match against.
 | `clade_column` | metadata clade column (default `Nextstrain_clade`) |
 | `site_include_start` / `site_include_end` | coding range `[266, 29674]`; UTR masks outside it are dropped |
 | `strict` | fail if old masks are not fully recovered |
-| `matutils`, `workdir` | binary name and scratch dir for the large paths files |
+| `matutils` | `matUtils` binary name / path (from the `usher` conda package) |
 | `nodes_representative`, `nodes_founder` | founder / representative node-map intermediates (default `results/nodes_{founder,representative}.yaml`) |
 | `comparison_report` | human anchor-distance table (default `results/anchoring_comparison.txt`) |
 | `anchor_distances` | machine-readable anchor distances (default `results/anchor_distances.yaml`) |
@@ -131,9 +131,9 @@ version-controlled, those entries are reviewed exactly like code.
 
 `matUtils extract --sample-paths` on a tree this size (~17M samples) produces a large paths
 file (tens of GB); the generator reads it only until every anchor node's ancestor
-chain has been seen (early exit), so memory stays modest. Point `workdir` at a
-disk with room — the file is a Snakemake `temp` output, deleted automatically once
-the masks are built, so it is not left behind after the run. When actively
+chain has been seen (early exit), so memory stays modest. It lands in `results/`
+as a Snakemake `temp` output, deleted automatically once the masks are built, so
+it is not left behind after the run. When actively
 developing, pass `snakemake --notemp` to keep it (and the other intermediates) so
 re-running a later stage doesn't re-trigger the ~1 h `--sample-paths` extract.
 

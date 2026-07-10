@@ -535,11 +535,14 @@ def build_masks_for_nodes(spec, node_map, target_full_values, clade_founders,
 # ---------------------------------------------------------------------------
 
 
-def _capture_token_chains(sample_paths_file, target_nodes, log_file=None):
+def capture_token_chains(sample_paths_file, target_nodes, log_file=None):
     """Like ``capture_ancestor_chains`` but keeps each node's mutation tokens.
 
     Returns ``{node: [tokens]}`` where each token is ``node_id:MUT,MUT`` (or bare
     ``node_id``) along the root->node path, so branch mutation counts are available.
+    Strip the ``:MUT`` payload from each token to recover the id-only chains
+    ``capture_ancestor_chains`` returns, so one token scan can feed both the anchor
+    cross-check and the over-mask assignment.
     """
     remaining = set(target_nodes)
     chains = {}
@@ -570,7 +573,7 @@ def _token_muts(token):
 
 
 def compute_anchor_distances(founder_node, rep_node, sample_paths_file,
-                             log_file=None):
+                             log_file=None, chains=None):
     """Patristic distance between each clade's founder anchor and representative.
 
     For every clade in ``founder_node`` returns an entry describing how far its
@@ -583,10 +586,13 @@ def compute_anchor_distances(founder_node, rep_node, sample_paths_file,
       ancestor), and ``diff_muts`` (the sorted set of tree mutations separating the
       two anchors).
 
-    One sample-paths scan (mutation-preserving) covers all anchors.
+    Pass precomputed ``chains`` (from ``capture_token_chains``, covering every
+    founder + representative node) to reuse a single sample-paths scan; otherwise
+    one mutation-preserving scan is done here covering all anchors.
     """
-    targets = set(founder_node.values()) | {n for n in rep_node.values() if n}
-    chains = _capture_token_chains(sample_paths_file, targets, log_file)
+    if chains is None:
+        targets = set(founder_node.values()) | {n for n in rep_node.values() if n}
+        chains = capture_token_chains(sample_paths_file, targets, log_file)
 
     def ids_of(chain):
         return [t.split(":", 1)[0] for t in chain]
@@ -949,7 +955,6 @@ CONFIG_DEFAULTS = {
     "site_include_start": 266,   # masks outside [start, end] (the UTRs) are dropped
     "site_include_end": 29674,
     "matutils": "matUtils",
-    "workdir": "results",        # dir for the (large) temporary paths files
     "strict": False,             # exit nonzero if old masks are not fully recovered
     "log": None,
     # Second output: per-PANGO-lineage masks (companion to the Nextstrain output).
@@ -957,7 +962,7 @@ CONFIG_DEFAULTS = {
     # Anchor cross-check: fail if a clade's founder anchor sits more than this many
     # mutations (patristic) from its representative anchor.
     "max_anchor_distance": 4,
-    # Staged-pipeline intermediates / reports (defaults under workdir; the
+    # Staged-pipeline intermediates / reports (defaults under results/; the
     # Snakemake rules write these and the downstream rules read them):
     "nodes_representative": "results/nodes_representative.yaml",  # Mode 1 node map
     "nodes_founder": "results/nodes_founder.yaml",               # Mode 2 node map

@@ -135,33 +135,37 @@ def main(argv=None):
         cfg["metadata"], cfg["clade_column"], log_file)
     start, end = cfg["site_include_start"], cfg["site_include_end"]
 
-    # The output is founder-anchored: every clade must have a founder node.
-    founder_node, _, no_founder = lib.read_nodes(nodes_founder)
-    if no_founder:
-        raise ValueError(
-            f"{len(no_founder)} PANGO clade(s) have no annotated founder node and "
-            f"cannot be anchored: {sorted(no_founder)}")
+    # The output is founder-anchored; resolve_founder already hard-errors on any
+    # clade missing a founder, so nodes_founder resolves every spec clade.
+    founder_node, _, _ = lib.read_nodes(nodes_founder)
     rep_node, _, rep_unresolved = lib.read_nodes(nodes_rep)
     lib.log(f"Founder anchors: {len(founder_node)}; representative anchors: "
             f"{len(rep_node)} ({len(rep_unresolved)} absent)", log_file)
 
+    # --- Single sample-paths scan feeding both the anchor cross-check and the
+    #     over-mask assignment. Token chains (node:mutations) subsume the id-only
+    #     ancestor chains the assignment needs, so one pass over the ~19 GB file
+    #     covers every anchor (founder + representative) and Nextstrain founder node.
+    ns_founder_nodes = {clade_founders[v] for v in ns_full_values
+                        if v in clade_founders}
+    all_targets = (set(founder_node.values())
+                   | {n for n in rep_node.values() if n}
+                   | ns_founder_nodes)
+    lib.log("\n=== Scanning sample paths (shared: cross-check + both outputs) ===",
+            log_file)
+    token_chains = lib.capture_token_chains(sample_paths, all_targets, log_file)
+    chains = {n: [t.split(":", 1)[0] for t in toks]
+              for n, toks in token_chains.items()}
+
     # --- Anchor cross-check table (report-only here; enforced in check_anchors) --
     lib.log("\n=== Cross-checking founder vs representative anchors ===", log_file)
     distances = lib.compute_anchor_distances(founder_node, rep_node, sample_paths,
-                                             log_file)
+                                             log_file, chains=token_chains)
     write_distance_report(out_comparison, distances, cfg["max_anchor_distance"],
                           set(cfg["representative_absent_ok"]))
     write_distance_data(out_distances, distances)
     lib.log(f"Wrote anchor distance table to {out_comparison} / {out_distances}",
             log_file)
-
-    # --- Build both outputs from the founder anchoring (one shared scan) --------
-    ns_founder_nodes = {clade_founders[v] for v in ns_full_values
-                        if v in clade_founders}
-    shared_targets = set(founder_node.values()) | ns_founder_nodes
-    lib.log("\n=== Capturing ancestor chains (shared across both outputs) ===",
-            log_file)
-    chains = lib.capture_ancestor_chains(sample_paths, shared_targets, log_file)
 
     lib.log("\n=== Building Nextstrain-clade masks (founder-anchored) ===", log_file)
     ns_masks = lib.build_masks_for_nodes(
