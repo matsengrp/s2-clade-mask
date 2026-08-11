@@ -17,8 +17,8 @@
 # files: their sample names are what the spec representatives match against.
 # Do NOT use a public-only tree (missing several GISAID-only representatives)
 # or a filtered per-run tree (all clades must be present / annotated).
-tree: /fh/fast/matsen_e/shared/viral-dasm/mat-trees/2026-04-22-gisaid-and-public/gisaidAndPublic.2026-04-22.masked.gisaidNames.pb.gz
-metadata: /fh/fast/matsen_e/shared/viral-dasm/mat-trees/2026-04-22-gisaid-and-public/gisaidAndPublic.2026-04-22.gisaidNames.metadata.tsv.gz
+tree: /fh/fast/matsen_e/shared/viral-dasm/mat-trees/2026-08-06-gisaid-and-public/gisaidAndPublic.2026-08-06.masked.gisaidNames.pb.gz
+metadata: /fh/fast/matsen_e/shared/viral-dasm/mat-trees/2026-08-06-gisaid-and-public/gisaidAndPublic.2026-08-06.gisaidNames.metadata.tsv.gz
 
 # Vendored UCSC PANGO-lineage-keyed masking spec (input).
 branch_spec: data/branchSpecificMask.yml
@@ -56,7 +56,13 @@ strict: true       # fail (nonzero exit) if old masks are not fully recovered
 # node sits more than this many mutations (patristic) from its representative
 # node. 4 is the current empirical maximum (BA.2.75); keep it as tight as the data
 # allows so a genuinely mis-resolved anchor is caught.
-max_anchor_distance: 4
+# Raised 4 -> 5 for the 2026-08-06 tree. XBB.1.5's founder sits 5 mutations from its
+# representative there (G27915T, T17124C, T23018C), against <=4 on 2026-04-22. Checked
+# before raising, per the instruction above: 23A's accumulated mask is byte-identical
+# between the two trees, and site 27915 shows up independently as a legitimate new
+# reversion mask (T27915G) on 23B -- so this is the newer tree resolving the topology
+# at 27915 differently, not a mis-resolved anchor. Every other clade is <=4, most 0-2.
+max_anchor_distance: 5
 
 # --- Execution --------------------------------------------------------------
 
