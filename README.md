@@ -333,6 +333,32 @@ mask_22B:
 mutation). Blocks without a `mutations:` field behave exactly as before, so the
 field is backward-compatible.
 
+### Why the PANGO file is the *shorter* one
+
+PANGO lineages are finer-grained than Nextstrain clades, so the PANGO-keyed file
+looks like it should have more blocks. It has fewer (25 vs. 43 on the 2026-08-06
+tree). The reason is inheritance: a mask applies to the clade it names **and to
+every clade descended from it**, because the problematic site is a property of the
+branch where it arose and is carried by everything downstream. A lineage therefore
+needs its own block only when it introduces *additional* sites of its own.
+
+* **PANGO** takes full advantage of that. It has exactly the 25 lineages named in
+  `branchSpecificMask.yml` — the ones where the UCSC spec adds new sites. `JN.1`
+  gets a block because it adds sites, and that block also carries the sites it
+  inherits from its ancestors `BA.2.86` and `BA.2`. The many thousands of lineages
+  below `JN.1` add nothing new, so they get no block and simply inherit.
+* **Nextstrain** cannot, because `mat-pcp` looks a clade's mask up by its exact
+  Nextstrain label and does no tree traversal of its own: a clade absent from the
+  file gets an empty mask, not its parent's. Every affected clade must therefore be
+  listed explicitly with its full inherited set, which flattens the 25 spec lineages
+  onto 43 Nextstrain clades. The flattening is lopsided — 21 of the 43 blocks are
+  the JN.1 radiation, which PANGO covers with 4.
+
+So the PANGO file records only where masking *changes* down the tree, while the
+Nextstrain file spells out the resulting mask for each clade the pipeline will ask
+about. The over-mask policy (§5) adds to the size difference on top of this, by
+widening individual blocks rather than adding new ones.
+
 ## How the new masks match the old ones
 
 The "old scheme" is the original hand-made
