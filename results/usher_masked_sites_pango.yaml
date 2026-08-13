@@ -10,8 +10,8 @@
 # are discarded by the range filter at runtime regardless.
 #
 # source spec:   data/branchSpecificMask.yml
-# tree:          gisaidAndPublic.2026-04-22.masked.gisaidNames.pb.gz
-# metadata:      gisaidAndPublic.2026-04-22.gisaidNames.metadata.tsv.gz
+# tree:          gisaidAndPublic.2026-08-06.masked.gisaidNames.pb.gz
+# metadata:      gisaidAndPublic.2026-08-06.gisaidNames.metadata.tsv.gz
 # clade column:  Nextstrain_clade
 # include range: [266, 29674] (masks outside this range are omitted)
 # anchoring:     founder (MRCA) node per PANGO clade
